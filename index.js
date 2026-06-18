@@ -3,9 +3,10 @@ const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 const express = require('express');
 const ms = require('ms');
 
+// 7/24 Aktif kalması için Express Sunucusu
 const app = express();
-app.get('/', (req, res) => res.send('Bot 7/24 Aktif!'));
-app.listen(3000);
+app.get('/', (req, res) => res.send('Black Market Botu Aktif!'));
+app.listen(3000, () => console.log('Sunucu 3000 portunda çalışıyor.'));
 
 const client = new Client({ 
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions] 
@@ -24,7 +25,7 @@ const commands = [
 client.once('ready', async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
-    console.log(`${c.user.tag} aktif!`);
+    console.log(`${c.user.tag} - Black Market aktif!`);
 });
 
 let aktifDrop = null;
@@ -35,7 +36,6 @@ client.on('interactionCreate', async interaction => {
         const row = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder().setCustomId('ticket_secim').setPlaceholder('Talebinize uygun kategoriyi seçin...')
                 .addOptions([
-                    // New categories based on images
                     { label: 'Çekiliş Kazandım', value: 'cekilis_kazandim', emoji: '💖' },
                     { label: 'Drop Kazandım', value: 'drop_kazandim', emoji: '🎁' },
                     { label: 'Hesap Satın Alıcam', value: 'hesap_satinal', emoji: '💰' },
@@ -50,8 +50,7 @@ client.on('interactionCreate', async interaction => {
                 ])
         );
         const embed = new EmbedBuilder()
-            // Updated title and description based on images
-            .setTitle('💜 CrackerSpace — Destek Merkezi')
+            .setTitle('💜 Black Market — Destek Merkezi')
             .setDescription('Merhaba! Size nasıl yardımcı olabiliriz?\n\n' +
                 '💖 **Çekiliş Kazandım** — Çekiliş ödülünü talep etmek için\n' +
                 '🎁 **Drop Kazandım** — Drop ödüllerini teslim almak için\n' +
@@ -64,21 +63,16 @@ client.on('interactionCreate', async interaction => {
                 '📢 **Reklam** — Reklam talepleriniz için\n' +
                 '📧 **gmail ver owo kazan** — OwO kazanmak istiyorsan\n' +
                 '❓ **Diğer** — Diğer tüm talepler için\n\n' +
-                '⬇️ **Aşağıdan talebine uygun kategoriyi seçerek ticket açabilirsin.**\n\n' +
-                '⚠️ **Önemli Uyarılar**\n' +
-                '• Yan sunucudan banlanma sebebiyle ticket açarsanız buradan da banlanırsınız.\n' +
-                '• Yetkili ekibini gereksiz etiketlemek yasak ve ban sebebidir.')
+                '⬇️ **Aşağıdan talebine uygun kategoriyi seçerek ticket açabilirsin.**')
             .setColor('#2F3136')
-            .setThumbnail('https://cdn.discordapp.com/icons/1504445537724923944/a_6c1c1f062d592f6b865582a898495a43.webp') // Example image
-            .setFooter({ text: 'CrackerSpace • @r2xzzs • 30.05.2026 16:16' }); // Example timestamp
+            .setFooter({ text: 'Black Market • Destek Merkezi' });
         await interaction.reply({ embeds: [embed], components: [row] });
     }
 
-    // TICKET OLUŞTURMA VE KAPATMA DÜĞMESİ
     if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_secim') {
         const k = interaction.values[0];
         await interaction.deferReply({ ephemeral: true });
-        const ch = await interaction.guild.channels.create({ name: `ticket-${k}-${interaction.user.username}`, type: 0,
+        const ch = await interaction.guild.channels.create({ name: `ticket-${k}`, type: 0,
             permissionOverwrites: [{ id: interaction.guild.id, deny: ['ViewChannel'] }, { id: interaction.user.id, allow: ['ViewChannel', 'SendMessages'] }]
         });
         const kapatRow = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('kapat_ticket').setLabel('🔒 Ticket\'ı Kapat').setStyle(ButtonStyle.Danger));
@@ -95,13 +89,12 @@ client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand() && interaction.commandName === 'drop') {
         if (aktifDrop) return interaction.reply({ content: 'Zaten aktif bir drop var!', ephemeral: true });
         aktifDrop = interaction.options.getString('gorunen');
-        const embed = new EmbedBuilder().setTitle('🎉 BLACK & MARKET DROP! 💜').setDescription(`🎁 **Ödül:** ${aktifDrop}\n\n👑 *Butona ilk tıklayan kapar!*`).setColor('#5865F2');
+        const embed = new EmbedBuilder().setTitle('🎉 BLACK MARKET DROP! 💜').setDescription(`🎁 **Ödül:** ${aktifDrop}\n\n👑 *Butona ilk tıklayan kapar!*`).setColor('#5865F2');
         const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('drop_kap').setLabel('🎉 ÖDÜLÜ KAP!').setStyle(ButtonStyle.Success));
-        const res = await interaction.reply({ embeds: [embed], components: [row] });
+        const res = await interaction.reply({ embeds: [embed], components: [row], fetchReply: true });
         res.createMessageComponentCollector({ filter: i => i.customId === 'drop_kap', max: 1 }).on('collect', async i => {
             await i.deferUpdate();
-            const ticketRow = new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel('🎫 TICKET AÇ').setURL('https://discord.com/channels/1504445537724923944/1504450075235979374').setStyle(ButtonStyle.Link));
-            await interaction.editReply({ content: `🎉 **Kazanan:** ${i.user}\n🎁 Ödül: **${aktifDrop}**`, embeds: [], components: [ticketRow] });
+            await interaction.editReply({ content: `🎉 **Kazanan:** ${i.user}\n🎁 Ödül: **${aktifDrop}**`, embeds: [], components: [] });
             aktifDrop = null;
         });
     }
@@ -117,12 +110,12 @@ client.on('interactionCreate', async interaction => {
         const reply = await interaction.reply({ embeds: [embed], fetchReply: true });
         await reply.react('🎉');
         setTimeout(async () => {
-            const users = (await (await interaction.channel.messages.fetch(reply.id)).reactions.cache.get('🎉').users.fetch()).filter(u => !u.bot);
+            const reaction = (await interaction.channel.messages.fetch(reply.id)).reactions.cache.get('🎉');
+            const users = (await reaction.users.fetch()).filter(u => !u.bot);
             if (users.size < count) return interaction.followUp('Yeterli katılım yok, çekiliş iptal.');
             const w = Array.from(users.values()).sort(() => 0.5 - Math.random()).slice(0, count).map(w => w.toString()).join(', ');
-            const resEmbed = new EmbedBuilder().setTitle('🎉 ÇEKİLİŞ SONA ERDİ 🎉').setDescription(`Tebrikler ${w}! 🎉\n🎁 **Ödül:** ${prize}\n⚠️ **Önemli:** Ödülünüzü teslim almak için ticket açın. **1 gün süreniz var!**`).setColor('#00FF00');
-            const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel('🎫 TICKET AÇ').setURL('https://discord.com/channels/1504445537724923944/1504450075235979374').setStyle(ButtonStyle.Link));
-            await interaction.followUp({ embeds: [resEmbed], components: [row] });
+            const resEmbed = new EmbedBuilder().setTitle('🎉 ÇEKİLİŞ SONA ERDİ 🎉').setDescription(`Tebrikler ${w}! 🎉\n🎁 **Ödül:** ${prize}`).setColor('#00FF00');
+            await interaction.followUp({ embeds: [resEmbed] });
         }, msDur);
     }
 });
