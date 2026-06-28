@@ -524,7 +524,7 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // YENİDEN ÇEK (REROLL) BUTON SİSTEMİ
+        // YENİDEN ÇEK (REROLL) BUTON SİSTEMİ
         if (interaction.customId.startsWith('cekilis_reroll_')) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
                 return interaction.reply({ content: '❌ **Yetki Yetersiz:** Bu butonu sadece yetkili ekibi kullanabilir.', ephemeral: true });
@@ -583,7 +583,7 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // ANKET SİSTEMİ (EVET/HAYIR OYLAMASI)
+        // ANKET SİSTEMİ (EVET/HAYIR OYLAMASI)
         if (interaction.customId.startsWith('anket_')) {
             const parcalar = interaction.customId.split('_'); 
             const tip = parcalar[1];
@@ -615,18 +615,20 @@ client.on('interactionCreate', async interaction => {
             await db.set(`anket_${anketId}_evet`, evetDizi);
             await db.set(`anket_${anketId}_hayir`, hayirDizi);
 
-            const tOy = evetDizi.length + hayirDizi.length;
-            const eYuzde = tOy === 0 ? 0 : Math.round((evetDizi.length / tOy) * 100);
-            const hYuzde = tOy === 0 ? 0 : Math.round((hayirDizi.length / tOy) * 100);
+            const toplamOy = evetDizi.length + hayirDizi.length;
+            const evetYuzde = toplamOy > 0 ? Math.round((evetDizi.length / toplamOy) * 100) : 0;
+            const hayirYuzde = toplamOy > 0 ? Math.round((hayirDizi.length / toplamOy) * 100) : 0;
 
-            const guncelEmbed = new EmbedBuilder()
+            const guncelSahip = await db.get(`anket_${anketId}_sahip`) || 'Bilinmiyor';
+
+            const yeniEmbed = new EmbedBuilder()
                 .setTitle('📊 DROP ZONE TR - ANKET')
-                .setDescription(`**Soru:** ${soru}\n\n🟩 **Evet:** \`${eYuzde}%\` (${evetDizi.length} Oy)\n🟥 **Hayır:** \`${hYuzde}%\` (${hayirDizi.length} Oy)`)
+                .setDescription(`**Soru:** ${soru}\n\n🟩 **Evet:** \`${evetYuzde}%\` (${evetDizi.length} Oy)\n🟥 **Hayır:** \`${hayirYuzde}%\` (${hayirDizi.length} Oy)`)
                 .setColor('#8A2BE2')
-                .setFooter({ text: `Anketi Başlatan: ${await db.get(`anket_${anketId}_sahip`)}` })
+                .setFooter({ text: `Anketi Başlatan: ${guncelSahip}` })
                 .setTimestamp();
 
-            await interaction.update({ embeds: [guncelEmbed] });
+            await interaction.update({ embeds: [yeniEmbed] });
         }
     }
 });
