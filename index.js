@@ -25,7 +25,7 @@ app.listen(3000);
 // --- SUNUCU AYARLARI ---
 const DESTEK_ROL_ID = '1520772451707916368';
 const YETKILI_ROL_ID = '1520515365786882178';
-const TICKET_KATEGORI_ID = '1520530500022960198'; // Gerekirse burayı kendi kategori ID'nle değiştir
+const TICKET_KATEGORI_ID = '1520530500022960198';
 
 function parseTurkceSure(sure) {
     return sure
@@ -76,7 +76,6 @@ const commands = [
     new SlashCommandBuilder().setName('anket').setDescription('Gelişmiş butonlu anket başlatır.').addStringOption(o => o.setName('soru').setDescription('Anket sorusu nedir?').setRequired(true))
 ].map(c => c.toJSON());
 
-// --- ÇEKİLİŞ BİTİRME FONKSİYONU ---
 async function cekilisBitir(channelId, messageId) {
     const veri = await db.get(`cekilis_${messageId}`);
     if (!veri || veri.bitti === true) return; 
@@ -149,7 +148,6 @@ async function cekilisBitir(channelId, messageId) {
     await kanal.send(`🎉 **Tebrikler!** ${kazananMention} **kazandı!** 💜`);
 }
 
-// --- BOT READY ---
 client.once('ready', async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
@@ -178,15 +176,8 @@ client.once('ready', async (c) => {
     }
 });
 
-// --- INTERACTION CREATE ---
 client.on('interactionCreate', async interaction => {
-    
-    // ==========================================
-    // 1. SLASH KOMUTLARI
-    // ==========================================
     if (interaction.isChatInputCommand()) {
-        
-        // TICKET PANEL
         if (interaction.commandName === 'ticketpanel') {
             const row = new ActionRowBuilder().addComponents(
                 new StringSelectMenuBuilder()
@@ -213,7 +204,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
-        // VOUCH
         if (interaction.commandName === 'vouch') {
             const yetkili = interaction.options.getUser('veren');
             const alanUye = interaction.options.getUser('alan');
@@ -249,7 +239,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
-        // YETKİLİ PUAN
         if (interaction.commandName === 'yetkilipuan') {
             const hedef = interaction.options.getUser('kullanici') || interaction.user;
             const vSayi = await db.get(`vouch_${hedef.id}`) || 0;
@@ -267,7 +256,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
-        // DROP KOMUTU
         if (interaction.commandName === 'drop') {
             const gorunenOdul = interaction.options.getString('gorunen');
             const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
@@ -300,7 +288,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
         }
 
-        // ÇEKİLİŞ KOMUTU
         if (interaction.commandName === 'cekilis') {
             const durInput = interaction.options.getString('sure');
             const count = interaction.options.getInteger('kazanan_sayisi');
@@ -354,7 +341,6 @@ client.on('interactionCreate', async interaction => {
             }, msDur);
         }
 
-        // LEGIT KOMUTU
         if (interaction.commandName === 'legit') {
             const image = interaction.options.getAttachment('image');
             const odul = interaction.options.getString('odul');
@@ -382,7 +368,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
-        // ANKET KOMUTU
         if (interaction.commandName === 'anket') {
             const soru = interaction.options.getString('soru');
 
@@ -401,7 +386,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
-        // MODERASYON SİSTEMİ
         if (['ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: 'Yetkin yok!', ephemeral: true });
             
@@ -440,12 +424,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // ==========================================
-    // 2. BUTON ETKİLEŞİMLERİ
-    // ==========================================
     if (interaction.isButton()) {
-        
-        // Drop sistemi buton yakalayıcı (Resimdeki ÖDÜLÜ KAP butonu)
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const veri = await db.get(`drop_data_${dropId}`);
@@ -470,7 +449,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.channel.send(`🎉 ${interaction.user}, hızlı davrandı ve **${veri.gorunen}** ödülünü kaptı!`);
         }
 
-        // Çekiliş yeniden çekme butonu
         if (interaction.customId.startsWith('cekilis_reroll_')) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
                 return interaction.reply({ content: 'Sadece yetkililer çekilişi yeniden çekebilir.', ephemeral: true });
@@ -480,7 +458,6 @@ client.on('interactionCreate', async interaction => {
             await cekilisBitir(interaction.channel.id, msgId);
         }
 
-        // Anket buton sistemi
         if (['anket_evet', 'anket_hayir'].includes(interaction.customId)) {
             const msgId = interaction.message.id;
             const userVoted = await db.get(`anket_oy_${msgId}_${interaction.user.id}`);
@@ -507,7 +484,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.update({ components: [row] });
         }
 
-        // TICKET KAPATMA BUTONU
         if (interaction.customId === 'ticket_kapat') {
             await interaction.reply({ content: 'Bu destek talebi 5 saniye içinde kapatılıyor...' });
             setTimeout(() => {
@@ -516,15 +492,11 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // ==========================================
-    // 3. SEÇİM MENÜSÜ (TICKET KANALI AÇMA) ETKİLEŞİMLERİ
-    // ==========================================
+    // --- SEÇİM MENÜSÜ GÜVENLİ TICKET SİSTEMİ ---
     if (interaction.isStringSelectMenu()) {
-        // Resimdeki "Seçim yap" menüsü tetiklendiğinde çalışan asıl büyük mantık:
         if (interaction.customId === 'ticket_secim') {
             const secilenKategori = interaction.values[0];
             
-            // Kullanıcıya işlem başladığı bilgisini verip arkada kanalı kuruyoruz (Resimdeki hatayı önler)
             await interaction.deferReply({ ephemeral: true });
 
             const kategoriIsimleri = {
@@ -540,33 +512,44 @@ client.on('interactionCreate', async interaction => {
 
             const kanalIsmi = `${kategoriIsimleri[secilenKategori] || 'bilet-'}${interaction.user.username}`;
 
+            let parentId = TICKET_KATEGORI_ID;
+            const targetCategory = interaction.guild.channels.cache.get(TICKET_KATEGORI_ID);
+            if (!targetCategory || targetCategory.type !== ChannelType.GuildCategory) {
+                parentId = null; 
+            }
+
             try {
-                // Ticket Kanalını Oluşturma
+                // İlk aşama: Kanalı sadece talep açan üye ve botun görebileceği şekilde güvenle oluşturuyoruz
                 const ticketKanali = await interaction.guild.channels.create({
                     name: kanalIsmi,
                     type: ChannelType.GuildText,
-                    parent: TICKET_KATEGORI_ID || null, // Varsa kategorinin içine açar
+                    parent: parentId, 
                     permissionOverwrites: [
                         {
                             id: interaction.guild.id,
-                            deny: [PermissionFlagsBits.ViewChannel], // Herkese gizle
+                            deny: [PermissionFlagsBits.ViewChannel], 
                         },
                         {
                             id: interaction.user.id,
-                            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory], // Açan kişiye aç
-                        },
-                        {
-                            id: DESTEK_ROL_ID,
-                            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages], // Destek ekibine aç
-                        },
-                        {
-                            id: YETKILI_ROL_ID,
-                            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages], // Yetkili ekibine aç
+                            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory], 
                         }
                     ],
                 });
 
-                // Kanal içine gidecek karşılama mesajı ve kapatma butonu
+                // İkinci aşama: Yetkili rollerini eklemeyi deniyoruz (Botun yetkisi yetmezse bile kod hata verip çökmeyecek)
+                try {
+                    await ticketKanali.permissionOverwrites.edit(DESTEK_ROL_ID, {
+                        ViewChannel: true,
+                        SendMessages: true
+                    });
+                    await ticketKanali.permissionOverwrites.edit(YETKILI_ROL_ID, {
+                        ViewChannel: true,
+                        SendMessages: true
+                    });
+                } catch (roleError) {
+                    console.log("Rol izinleri atanırken bot hiyerarşisine takıldı, fakat kanal başarıyla açıldı.");
+                }
+
                 const kapatRow = new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
                         .setCustomId('ticket_kapat')
@@ -582,13 +565,11 @@ client.on('interactionCreate', async interaction => {
                     .setTimestamp();
 
                 await ticketKanali.send({ content: `${interaction.user} | <@&${DESTEK_ROL_ID}>`, embeds: [hosgeldinEmbed], components: [kapatRow] });
-
-                // Paneli kullanan kişiye gizli onay mesajı
                 await interaction.editReply({ content: `✅ Destek kanalınız başarıyla oluşturuldu: ${ticketKanali}` });
 
             } catch (error) {
                 console.error(error);
-                await interaction.editReply({ content: '❌ Ticket kanalı oluşturulurken bir hata meydana geldi. Lütfen yetkililere bildirin.' });
+                await interaction.editReply({ content: '❌ Ticket kanalı oluşturulurken sistemsel bir hata meydana geldi. Lütfen botun sunucu rollerinde en üstte olduğundan emin olun!' });
             }
         }
     }
