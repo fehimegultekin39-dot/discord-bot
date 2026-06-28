@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder, StringSelectMenuBuilder, MessageFlags, PermissionsBitField } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder, StringSelectMenuBuilder, MessageFlags, PermissionsBitField, ChannelType } = require('discord.js');
 const { QuickDB } = require('quick.db');
 const db = new QuickDB();
 const express = require('express');
@@ -169,9 +169,9 @@ client.on('interactionCreate', async interaction => {
                     .addOptions([
                         { label: 'Çekiliş Kazandım', value: 'cekilis_kazandim', emoji: '💟', description: 'Kazandığınız çekiliş ödülünü talep etmek için burayı kullanın.' },
                         { label: 'Drop Kazandım', value: 'drop_kazandim', emoji: '🎁', description: 'Yayın veya etkinliklerden kazandığınız dropları teslim alın.' },
-                        { label: 'Hesap Satın Alıcam', value: 'hesap_satinal', emoji: '💲', description: 'Güvenli hesap satın alma, fiyat ve stok bilgisi almak için.' },
+                        { label: 'Hesap Satın Alıcam', value: 'hesap_satinal', emoji: '💲', description: 'Güvenli hesap satın alma, fiyat og stok bilgisi almak için.' },
                         { label: 'Partnerlik & İşbirliği', value: 'partnerlik', emoji: '🤝', description: 'Ortaklık, reklam ya da sponsorluk görüşmeleri yapmak için.' },
-                        { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '🔵', description: 'Ekibimize katılmak ve yetkili olmak istiyorsanız başvurun.' },
+                        { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '🔵', description: 'Ekibimize katılmak og yetkili olmak istiyorsanız başvurun.' },
                         { label: 'Teknik Destek', value: 'teknik_destek', emoji: '🔧', description: 'Yaşadığınız problemlerle ilgili teknik destek talebi oluşturun.' },
                         { label: 'Şikayet & Öneri', value: 'sikayet_oneri', emoji: '📝', description: 'Sunucu içi şikayetlerinizi veya önerilerinizi bize iletin.' },
                         { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular og sorularınız için bu kategoriyi seçin.' }
@@ -266,7 +266,7 @@ client.on('interactionCreate', async interaction => {
             
             const baslangicEmbed = new EmbedBuilder()
                 .setTitle('🎉 DROP ZONE TR DROP!')
-                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülın sahibi olur og ödül otomatik olarak DM kutusuna gönderilir!*`)
+                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur og ödül otomatik olarak DM kutusuna gönderilir!*`)
                 .setColor('#8A2BE2')
                 .setFooter({ text: `DROP ZONE TR • Başlatan: @${interaction.user.username}` })
                 .setTimestamp();
@@ -428,10 +428,10 @@ client.on('interactionCreate', async interaction => {
             const canalAdi = `${kategoriIsimleri[secim] || 'ticket'}-${interaction.user.username}`;
 
             try {
-                // Kanal oluşturulurken belirttiğin kategoriye bağlanmasını ve izin ayarlarını yapılandırdık
+                // type parametresi ChannelType.GuildText olarak kararlı hale getirildi.
                 const ticketKanal = await interaction.guild.channels.create({
                     name: canalAdi,
-                    type: 0,
+                    type: ChannelType.GuildText,
                     parent: TICKET_KATEGORI_ID, // Doğru kategori altında açılması sağlandı
                     permissionOverwrites: [
                         { 
@@ -466,8 +466,9 @@ client.on('interactionCreate', async interaction => {
                 await ticketKanal.send({ content: `${interaction.user} • <@&${DESTEK_ROL_ID}>`, embeds: [ticketEmbed], components: [closeRow] });
                 await interaction.editReply({ content: `✅ Destek kanalınız başarıyla oluşturuldu: ${ticketKanal}` });
             } catch (error) {
-                console.error(error);
-                await interaction.editReply({ content: '❌ Ticket kanalı oluşturulurken bir hata meydana geldi.' });
+                // Terminale tam API hatasını basması sağlandı, böylece rol/kategori hatası kolayca çözülür.
+                console.error("Ticket Kanalı Oluşturma Hatası Logu:", error);
+                await interaction.editReply({ content: '❌ Ticket kanalı oluşturulurken bir hata meydana geldi. Lütfen bot yetkilerini ve kategori ID\'sini kontrol edin.' });
             }
         }
     }
@@ -588,46 +589,8 @@ client.on('interactionCreate', async interaction => {
 
             } catch (err) {
                 console.error(err);
-                await interaction.reply({ content: '❌ Yeniden çekme işlemi esnasında teknik bir hata oluştu.', flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: '❌ Yeniden çekme işlemi esnasında bir hata oluştu.', flags: MessageFlags.Ephemeral });
             }
-        }
-
-        // ANKET SİSTEMİ
-        if (interaction.customId.startsWith('anket_')) {
-            const parcalar = interaction.customId.split('_'); 
-            const tip = parcalar[1];
-            const anketId = parcalar[2];
-            const userId = interaction.user.id;
-
-            let evetOylari = await db.get(`anket_${anketId}_evet`) || [];
-            let hayirOylari = await db.get(`anket_${anketId}_hayir`) || [];
-            const soru = await db.get(`anket_${anketId}_soru`);
-            const anketSahibi = await db.get(`anket_${anketId}_sahip`) || "Bilinmiyor";
-
-            if (evetOylari.includes(userId) || hayirOylari.includes(userId)) {
-                return interaction.reply({ content: '❌ Zaten bu ankette oy kullanmışsınız!', flags: MessageFlags.Ephemeral });
-            }
-
-            if (tip === 'evet') {
-                evetOylari.push(userId);
-                await db.set(`anket_${anketId}_evet`, evetOylari);
-            } else {
-                hayirOylari.push(userId);
-                await db.set(`anket_${anketId}_hayir`, hayirOylari);
-            }
-
-            const toplamOy = evetOylari.length + hayirOylari.length;
-            const evetYuzde = toplamOy > 0 ? Math.round((evetOylari.length / toplamOy) * 100) : 0;
-            const hayirYuzde = toplamOy > 0 ? Math.round((hayirOylari.length / toplamOy) * 100) : 0;
-
-            const yeniEmbed = new EmbedBuilder()
-                .setTitle('📊 DROP ZONE TR - ANKET')
-                .setDescription(`**Soru:** ${soru}\n\n🟩 **Evet:** \`${evetYuzde}%\` (${evetOylari.length} Oy)\n🟥 **Hayır:** \`${hayirYuzde}%\` (${hayirOylari.length} Oy)`)
-                .setColor('#8A2BE2')
-                .setFooter({ text: `Anketi Başlatan: ${anketSahibi}` })
-                .setTimestamp();
-
-            await interaction.update({ embeds: [yeniEmbed] });
         }
     }
 });
