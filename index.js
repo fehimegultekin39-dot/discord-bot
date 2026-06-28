@@ -524,7 +524,7 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // YENİDEN ÇEK (REROLL) BUTON SİSTEMİ
+        // YENİDEN ÇEK (REROLL) BUTON SİSTEMİ
         if (interaction.customId.startsWith('cekilis_reroll_')) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
                 return interaction.reply({ content: '❌ **Yetki Yetersiz:** Bu butonu sadece yetkili ekibi kullanabilir.', ephemeral: true });
@@ -583,7 +583,7 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // ANKET SİSTEMİ (EVET/HAYIR OYLAMASI)
+        // ANKET SİSTEMİ (EVET/HAYIR OYLAMASI)
         if (interaction.customId.startsWith('anket_')) {
             const parcalar = interaction.customId.split('_'); 
             const tip = parcalar[1];
@@ -594,39 +594,31 @@ client.on('interactionCreate', async interaction => {
 
             let evetDizi = await db.get(`anket_${anketId}_evet`) || [];
             let hayirDizi = await db.get(`anket_${anketId}_hayir`) || [];
-            const userId = interaction.user.id;
 
             if (tip === 'evet') {
-                if (evetDizi.includes(userId)) {
-                    evetDizi = evetDizi.filter(id => id !== userId);
-                } else {
-                    evetDizi.push(userId);
-                    hayirDizi = hayirDizi.filter(id => id !== userId);
+                if (evetDizi.includes(interaction.user.id)) return interaction.reply({ content: '❌ Zaten Evet oyu verdin!', ephemeral: true });
+                if (hayirDizi.includes(interaction.user.id)) {
+                    hayirDizi = hayirDizi.filter(id => id !== interaction.user.id);
+                    await db.set(`anket_${anketId}_hayir`, hayirDizi);
                 }
+                evetDizi.push(interaction.user.id);
+                await db.set(`anket_${anketId}_evet`, evetDizi);
             } else if (tip === 'hayir') {
-                if (hayirDizi.includes(userId)) {
-                    hayirDizi = hayirDizi.filter(id => id !== userId);
-                } else {
-                    hayirDizi.push(userId);
-                    evetDizi = evetDizi.filter(id => id !== userId);
+                if (hayirDizi.includes(interaction.user.id)) return interaction.reply({ content: '❌ Zaten Hayır oyu verdin!', ephemeral: true });
+                if (evetDizi.includes(interaction.user.id)) {
+                    evetDizi = evetDizi.filter(id => id !== interaction.user.id);
+                    await db.set(`anket_${anketId}_evet`, evetDizi);
                 }
+                hayirDizi.push(interaction.user.id);
+                await db.set(`anket_${anketId}_hayir`, hayirDizi);
             }
 
-            await db.set(`anket_${anketId}_evet`, evetDizi);
-            await db.set(`anket_${anketId}_hayir`, hayirDizi);
-
             const toplamOy = evetDizi.length + hayirDizi.length;
-            const evetYuzde = toplamOy > 0 ? Math.round((evetDizi.length / toplamOy) * 100) : 0;
-            const hayirYuzde = toplamOy > 0 ? Math.round((hayirDizi.length / toplamOy) * 100) : 0;
+            const evetYuzde = toplamOy > 0 ? ((evetDizi.length / toplamOy) * 100).toFixed(1) : 0;
+            const hayirYuzde = toplamOy > 0 ? ((hayirDizi.length / toplamOy) * 100).toFixed(1) : 0;
 
-            const guncelSahip = await db.get(`anket_${anketId}_sahip`) || 'Bilinmiyor';
-
-            const yeniEmbed = new EmbedBuilder()
-                .setTitle('📊 DROP ZONE TR - ANKET')
-                .setDescription(`**Soru:** ${soru}\n\n🟩 **Evet:** \`${evetYuzde}%\` (${evetDizi.length} Oy)\n🟥 **Hayır:** \`${hayirYuzde}%\` (${hayirDizi.length} Oy)`)
-                .setColor('#8A2BE2')
-                .setFooter({ text: `Anketi Başlatan: ${guncelSahip}` })
-                .setTimestamp();
+            const yeniEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+                .setDescription(`**Soru:** ${soru}\n\n🟩 **Evet:** \`${evetYuzde}%\` (${evetDizi.length} Oy)\n🟥 **Hayır:** \`${hayirYuzde}%\` (${hayirDizi.length} Oy)`);
 
             await interaction.update({ embeds: [yeniEmbed] });
         }
