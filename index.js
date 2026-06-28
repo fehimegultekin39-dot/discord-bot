@@ -240,7 +240,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
-        // DROP KOMUTU (GİZLİ ÖDÜL SİSTEMLİ)
+        // DROP KOMUTU
         if (interaction.commandName === 'drop') {
             const gorunenOdul = interaction.options.getString('gorunen');
             const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
@@ -450,7 +450,6 @@ client.on('interactionCreate', async interaction => {
                         .setStyle(ButtonStyle.Danger)
                 );
 
-                // Yeni ticket açıldığında YETKILI_ROL_ID rolüne sahip kişileri etiketler
                 await ticketKanal.send({ content: `${interaction.user} • <@&${YETKILI_ROL_ID}>`, embeds: [ticketEmbed], components: [closeRow] });
                 await interaction.editReply({ content: `✅ Destek kanalınız başarıyla oluşturuldu: ${ticketKanal}` });
             } catch (error) {
@@ -465,7 +464,6 @@ client.on('interactionCreate', async interaction => {
         
         // TICKET KAPATMA BUTONU
         if (interaction.customId === 'ticket_kapat') {
-            // Sadece YETKILI_ROL_ID rolüne sahip olanlar kapatabilsin kontrolü
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
                 return interaction.reply({ content: '❌ **Yetki Yetersiz:** Bu bileti sadece yetkili ekibi kapatabilir.', flags: MessageFlags.Ephemeral });
             }
@@ -596,3 +594,34 @@ client.on('interactionCreate', async interaction => {
             let hayirOylari = await db.get(`anket_${anketId}_hayir`) || [];
             const soru = await db.get(`anket_${anketId}_soru`) || "Bilinmeyen Soru";
             const sahip = await db.get(`anket_${anketId}_sahip`) || "Bilinmiyor";
+
+            if (tip === 'evet') {
+                if (evetOylari.includes(userId)) return interaction.reply({ content: '❌ Zaten **Evet** oyu vermişsiniz!', flags: MessageFlags.Ephemeral });
+                if (hayirOylari.includes(userId)) hayirOylari = hayirOylari.filter(id => id !== userId);
+                evetOylari.push(userId);
+            } else if (tip === 'hayir') {
+                if (hayirOylari.includes(userId)) return interaction.reply({ content: '❌ Zaten **Hayır** oyu vermişsiniz!', flags: MessageFlags.Ephemeral });
+                if (evetOylari.includes(userId)) evetOylari = evetOylari.filter(id => id !== userId);
+                hayirOylari.push(userId);
+            }
+
+            await db.set(`anket_${anketId}_evet`, evetOylari);
+            await db.set(`anket_${anketId}_hayir`, hayirOylari);
+
+            const toplamOy = evetOylari.length + hayirOylari.length;
+            const evetYuzde = toplamOy === 0 ? 0 : Math.round((evetOylari.length / toplamOy) * 100);
+            const hayirYuzde = toplamOy === 0 ? 0 : Math.round((hayirOylari.length / toplamOy) * 100);
+
+            const yeniEmbed = new EmbedBuilder()
+                .setTitle('📊 DROP ZONE TR - ANKET')
+                .setDescription(`**Soru:** ${soru}\n\n🟩 **Evet:** \`${evetYuzde}%\` (${evetOylari.length} Oy)\n🟥 **Hayır:** \`${hayirYuzde}%\` (${hayirOylari.length} Oy)`)
+                .setColor('#8A2BE2')
+                .setFooter({ text: `Anketi Başlatan: ${sahip}` })
+                .setTimestamp();
+
+            await interaction.update({ embeds: [yeniEmbed] });
+        }
+    }
+});
+
+client.login(process.env.TOKEN);
