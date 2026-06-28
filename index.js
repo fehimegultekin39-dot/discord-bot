@@ -127,7 +127,6 @@ async function cekilisBitir(channelId, messageId) {
     await kanal.send(`🎉 **Tebrikler!** ${kazananMention} **kazandı!** 💜`);
 }
 
-// UYARI DÜZELTİLDİ: ready yerine clientReady kullanıldı.
 client.once('clientReady', async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
@@ -198,7 +197,13 @@ client.on('interactionCreate', async interaction => {
             const guildMember = await interaction.guild.members.fetch(yetkili.id);
             if (!guildMember.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Sadece **Yetkili Ekibi** rolündekilere vouch atılabilir.', ephemeral: true });
             
+            // Eğer daha önce veri yoksa sıfırdan başlar
+            let mevcutVouch = await db.get(`vouch_${yetkili.id}`);
+            if (mevcutVouch === null) {
+                await db.set(`vouch_${yetkili.id}`, 0);
+            }
             await db.add(`vouch_${yetkili.id}`, 1);
+            
             const toplam = await db.get(`vouch_${yetkili.id}`);
             const yildizlar = '⭐'.repeat(yildizSayisi);
             
@@ -266,7 +271,7 @@ client.on('interactionCreate', async interaction => {
             
             const baslangicEmbed = new EmbedBuilder()
                 .setTitle('🎉 DROP ZONE TR DROP!')
-                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ogün ödül otomatik olarak DM kutusuna gönderilir!*`)
+                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve ödül otomatik olarak DM kutusuna gönderilir!*`)
                 .setColor('#8A2BE2')
                 .setFooter({ text: `Drop Zone TR • Başlatan: @${interaction.user.username}` })
                 .setTimestamp();
@@ -348,3 +353,5 @@ client.on('interactionCreate', async interaction => {
                         if (!isNaN(saat)) msDur = saat * 60 * 60 * 1000;
                     } 
                     else if (temizSure.endsWith('gun') || temizSure.endsWith('gün') || temizSure.endsWith('d')) {
+                        let gun = parseFloat(temizSure.replace(/gun|gün|d/g, ''));
+                        if (!isNaN(gun)) msDur = gun * 24 * 60 * 60 *
