@@ -127,7 +127,8 @@ async function cekilisBitir(channelId, messageId) {
     await kanal.send(`🎉 **Tebrikler!** ${kazananMention} **kazandı!** 💜`);
 }
 
-client.once('clientReady', async (c) => {
+// DÜZELTİLDİ: clientReady yerine 'ready' yapıldı.
+client.once('ready', async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
     console.log(`${c.user.tag} aktif!`);
@@ -197,13 +198,7 @@ client.on('interactionCreate', async interaction => {
             const guildMember = await interaction.guild.members.fetch(yetkili.id);
             if (!guildMember.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Sadece **Yetkili Ekibi** rolündekilere vouch atılabilir.', ephemeral: true });
             
-            // Eğer daha önce veri yoksa sıfırdan başlar
-            let mevcutVouch = await db.get(`vouch_${yetkili.id}`);
-            if (mevcutVouch === null) {
-                await db.set(`vouch_${yetkili.id}`, 0);
-            }
             await db.add(`vouch_${yetkili.id}`, 1);
-            
             const toplam = await db.get(`vouch_${yetkili.id}`);
             const yildizlar = '⭐'.repeat(yildizSayisi);
             
@@ -271,7 +266,7 @@ client.on('interactionCreate', async interaction => {
             
             const baslangicEmbed = new EmbedBuilder()
                 .setTitle('🎉 DROP ZONE TR DROP!')
-                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve ödül otomatik olarak DM kutusuna gönderilir!*`)
+                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ogün ödül otomatik olarak DM kutusuna gönderilir!*`)
                 .setColor('#8A2BE2')
                 .setFooter({ text: `Drop Zone TR • Başlatan: @${interaction.user.username}` })
                 .setTimestamp();
@@ -333,7 +328,7 @@ client.on('interactionCreate', async interaction => {
             }, msDur);
         }
 
-        // MODERASYON SİSTEMİ
+        // MODERASYON SİSTEMİ (DÜZELTİLDİ & TAMAMLANDI)
         if (['ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: 'Yetkin yok!', ephemeral: true });
             
@@ -354,4 +349,23 @@ client.on('interactionCreate', async interaction => {
                     } 
                     else if (temizSure.endsWith('gun') || temizSure.endsWith('gün') || temizSure.endsWith('d')) {
                         let gun = parseFloat(temizSure.replace(/gun|gün|d/g, ''));
-                        if (!isNaN(gun)) msDur = gun * 24 * 60 * 60 *
+                        if (!isNaN(gun)) msDur = gun * 24 * 60 * 60 * 1000;
+                    }
+                }
+
+                if (!msDur || isNaN(msDur)) return interaction.reply({ content: '❌ Geçersiz süre formatı!', ephemeral: true });
+                
+                await m.timeout(msDur, 'Komut ile susturuldu');
+                await interaction.reply(`${m.user.tag} başarıyla ${sureInput} süreliğine susturuldu.`);
+            }
+
+            if (interaction.commandName === 'unmute') {
+                const m = interaction.options.getMember('kisi');
+                await m.timeout(null);
+                await interaction.reply(`${m.user.tag} susturulması kaldırıldı.`);
+            }
+        }
+    }
+});
+
+client.login(process.env.TOKEN);
