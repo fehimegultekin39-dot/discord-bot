@@ -1,5 +1,18 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder, StringSelectMenuBuilder, PermissionsBitField } = require('discord.js');
+const { 
+    Client, 
+    GatewayIntentBits, 
+    ActionRowBuilder, 
+    ButtonBuilder, 
+    ButtonStyle, 
+    EmbedBuilder, 
+    REST, 
+    Routes, 
+    SlashCommandBuilder, 
+    StringSelectMenuBuilder,
+    ChannelType,
+    PermissionFlagsBits
+} = require('discord.js');
 const { QuickDB } = require('quick.db');
 const db = new QuickDB();
 const express = require('express');
@@ -9,8 +22,10 @@ const app = express();
 app.get('/', (req, res) => res.send('Bot 7/24 Aktif!'));
 app.listen(3000);
 
+// --- SUNUCU AYARLARI ---
 const DESTEK_ROL_ID = '1520772451707916368';
 const YETKILI_ROL_ID = '1520515365786882178';
+const TICKET_KATEGORI_ID = '1520530500022960198'; // Gerekirse burayı kendi kategori ID'nle değiştir
 
 function parseTurkceSure(sure) {
     return sure
@@ -24,9 +39,15 @@ function parseTurkceSure(sure) {
 }
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions]
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent, 
+        GatewayIntentBits.GuildMessageReactions
+    ]
 });
 
+// --- SLASH KOMUT TANIMLAMALARI ---
 const commands = [
     new SlashCommandBuilder()
         .setName('drop')
@@ -55,6 +76,7 @@ const commands = [
     new SlashCommandBuilder().setName('anket').setDescription('Gelişmiş butonlu anket başlatır.').addStringOption(o => o.setName('soru').setDescription('Anket sorusu nedir?').setRequired(true))
 ].map(c => c.toJSON());
 
+// --- ÇEKİLİŞ BİTİRME FONKSİYONU ---
 async function cekilisBitir(channelId, messageId) {
     const veri = await db.get(`cekilis_${messageId}`);
     if (!veri || veri.bitti === true) return; 
@@ -127,7 +149,7 @@ async function cekilisBitir(channelId, messageId) {
     await kanal.send(`🎉 **Tebrikler!** ${kazananMention} **kazandı!** 💜`);
 }
 
-// DÜZELTİLDİ: clientReady yerine 'ready' yapıldı.
+// --- BOT READY ---
 client.once('ready', async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
@@ -156,8 +178,12 @@ client.once('ready', async (c) => {
     }
 });
 
+// --- INTERACTION CREATE ---
 client.on('interactionCreate', async interaction => {
     
+    // ==========================================
+    // 1. SLASH KOMUTLARI
+    // ==========================================
     if (interaction.isChatInputCommand()) {
         
         // TICKET PANEL
@@ -266,7 +292,7 @@ client.on('interactionCreate', async interaction => {
             
             const baslangicEmbed = new EmbedBuilder()
                 .setTitle('🎉 DROP ZONE TR DROP!')
-                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ogün ödül otomatik olarak DM kutusuna gönderilir!*`)
+                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülın sahibi olur ogün ödül otomatik olarak DM kutusuna gönderilir!*`)
                 .setColor('#8A2BE2')
                 .setFooter({ text: `Drop Zone TR • Başlatan: @${interaction.user.username}` })
                 .setTimestamp();
@@ -328,7 +354,54 @@ client.on('interactionCreate', async interaction => {
             }, msDur);
         }
 
-        // MODERASYON SİSTEMİ (DÜZELTİLDİ & TAMAMLANDI)
+        // LEGIT KOMUTU
+        if (interaction.commandName === 'legit') {
+            const image = interaction.options.getAttachment('image');
+            const odul = interaction.options.getString('odul');
+            const alan = interaction.options.getUser('alan');
+            const ekNot = interaction.options.getString('not_') || 'Not belirtilmedi.';
+
+            await db.add(`legit_${interaction.user.id}`, 1);
+            const toplamLegit = await db.get(`legit_${interaction.user.id}`);
+
+            const embed = new EmbedBuilder()
+                .setTitle('✅ NEW LEGIT PROOF')
+                .setDescription(`Bir işlem daha başarıyla tamamlandı ve kanıtlandı!`)
+                .addFields(
+                    { name: '👤 İşlemi Yapan Yetkili', value: `${interaction.user}`, inline: true },
+                    { name: '👤 Ödülü Alan', value: `${alan}`, inline: true },
+                    { name: '🎁 Verilen Ödül', value: `\`${odul}\``, inline: true },
+                    { name: '🔢 Yetkili Toplam Legit', value: `\`${toplamLegit} adet\``, inline: true },
+                    { name: '📝 Ekstra Not', value: ekNot, inline: false }
+                )
+                .setImage(image.url)
+                .setColor('#00FF00')
+                .setFooter({ text: `Drop Zone TR Legits • Onaylayan: ${interaction.user.username}` })
+                .setTimestamp();
+
+            await interaction.reply({ embeds: [embed] });
+        }
+
+        // ANKET KOMUTU
+        if (interaction.commandName === 'anket') {
+            const soru = interaction.options.getString('soru');
+
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('anket_evet').setLabel('Evet (0)').setStyle(ButtonStyle.Success).setEmoji('👍'),
+                new ButtonBuilder().setCustomId('anket_hayir').setLabel('Hayır (0)').setStyle(ButtonStyle.Danger).setEmoji('👎')
+            );
+
+            const embed = new EmbedBuilder()
+                .setTitle('📊 Drop Zone TR — Yeni Anket')
+                .setDescription(`**Soru:**\n> ${soru}\n\n*Lütfen aşağıda bulunan butonları kullanarak oyunuzu belirtin!*`)
+                .setColor('#F1C40F')
+                .setFooter({ text: `Anketi Başlatan: ${interaction.user.username}` })
+                .setTimestamp();
+
+            await interaction.reply({ embeds: [embed], components: [row] });
+        }
+
+        // MODERASYON SİSTEMİ
         if (['ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: 'Yetkin yok!', ephemeral: true });
             
@@ -363,6 +436,159 @@ client.on('interactionCreate', async interaction => {
                 const m = interaction.options.getMember('kisi');
                 await m.timeout(null);
                 await interaction.reply(`${m.user.tag} susturulması kaldırıldı.`);
+            }
+        }
+    }
+
+    // ==========================================
+    // 2. BUTON ETKİLEŞİMLERİ
+    // ==========================================
+    if (interaction.isButton()) {
+        
+        // Drop sistemi buton yakalayıcı (Resimdeki ÖDÜLÜ KAP butonu)
+        if (interaction.customId.startsWith('drop_')) {
+            const dropId = interaction.customId.replace('drop_', '');
+            const veri = await db.get(`drop_data_${dropId}`);
+            
+            if (!veri) return interaction.reply({ content: 'Bu drop sistemde bulunamadı!', ephemeral: true });
+            if (veri.bitti) return interaction.reply({ content: 'Maalesef, bu ödül başka biri tarafından çoktan kapıldı!', ephemeral: true });
+
+            await db.set(`drop_data_${dropId}.bitti`, true);
+            
+            try {
+                await interaction.user.send(`🎉 Tebrikler! **${veri.gorunen}** kazandın!\n\n🎁 **Teslim Edilen Ödül:** \`${veri.gizli}\``);
+            } catch (err) {
+                return interaction.reply({ content: 'Ödülü kazandın fakat DM kutun kapalı olduğu için sana gizli kodu iletemedim! Lütfen DM kutunu açıp yetkililere ulaş.', ephemeral: true });
+            }
+
+            const embed = interaction.message.embeds[0];
+            const guncellenmisEmbed = EmbedBuilder.from(embed)
+                .setDescription(`**Ödül:** \`${veri.gorunen}\`\n\n🎉 **Bu drop ${interaction.user} tarafından kapıldı!**`)
+                .setColor('#00FF00');
+            
+            await interaction.update({ embeds: [guncellenmisEmbed], components: [] });
+            await interaction.channel.send(`🎉 ${interaction.user}, hızlı davrandı ve **${veri.gorunen}** ödülünü kaptı!`);
+        }
+
+        // Çekiliş yeniden çekme butonu
+        if (interaction.customId.startsWith('cekilis_reroll_')) {
+            if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
+                return interaction.reply({ content: 'Sadece yetkililer çekilişi yeniden çekebilir.', ephemeral: true });
+            }
+            const msgId = interaction.customId.replace('cekilis_reroll_', '');
+            await interaction.reply({ content: 'Çekiliş yeniden sonuçlandırılıyor...', ephemeral: true });
+            await cekilisBitir(interaction.channel.id, msgId);
+        }
+
+        // Anket buton sistemi
+        if (['anket_evet', 'anket_hayir'].includes(interaction.customId)) {
+            const msgId = interaction.message.id;
+            const userVoted = await db.get(`anket_oy_${msgId}_${interaction.user.id}`);
+            if (userVoted) return interaction.reply({ content: 'Bu ankette zaten oy kullanmışsınız!', ephemeral: true });
+
+            await db.set(`anket_oy_${msgId}_${interaction.user.id}`, true);
+            
+            let evetSayisi = await db.get(`anket_evet_${msgId}`) || 0;
+            let hayirSayisi = await db.get(`anket_hayir_${msgId}`) || 0;
+
+            if (interaction.customId === 'anket_evet') {
+                evetSayisi++;
+                await db.set(`anket_evet_${msgId}`, evetSayisi);
+            } else {
+                hayirSayisi++;
+                await db.set(`anket_hayir_${msgId}`, hayirSayisi);
+            }
+
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('anket_evet').setLabel(`Evet (${evetSayisi})`).setStyle(ButtonStyle.Success).setEmoji('👍'),
+                new ButtonBuilder().setCustomId('anket_hayir').setLabel(`Hayır (${hayirSayisi})`).setStyle(ButtonStyle.Danger).setEmoji('👎')
+            );
+
+            await interaction.update({ components: [row] });
+        }
+
+        // TICKET KAPATMA BUTONU
+        if (interaction.customId === 'ticket_kapat') {
+            await interaction.reply({ content: 'Bu destek talebi 5 saniye içinde kapatılıyor...' });
+            setTimeout(() => {
+                interaction.channel.delete().catch(() => null);
+            }, 5000);
+        }
+    }
+
+    // ==========================================
+    // 3. SEÇİM MENÜSÜ (TICKET KANALI AÇMA) ETKİLEŞİMLERİ
+    // ==========================================
+    if (interaction.isStringSelectMenu()) {
+        // Resimdeki "Seçim yap" menüsü tetiklendiğinde çalışan asıl büyük mantık:
+        if (interaction.customId === 'ticket_secim') {
+            const secilenKategori = interaction.values[0];
+            
+            // Kullanıcıya işlem başladığı bilgisini verip arkada kanalı kuruyoruz (Resimdeki hatayı önler)
+            await interaction.deferReply({ ephemeral: true });
+
+            const kategoriIsimleri = {
+                'cekilis_kazandim': '💟-cekiliş-',
+                'drop_kazandim': '🎁-drop-',
+                'hesap_satinal': '💲-satınalma-',
+                'partnerlik': '🤝-partnerlik-',
+                'yetkili_alim': '🔵-yetkili-alım-',
+                'teknik_destek': '🔧-teknik-',
+                'sikayet_oneri': '📝-şikayet-',
+                'diger': '❓-destek-'
+            };
+
+            const kanalIsmi = `${kategoriIsimleri[secilenKategori] || 'bilet-'}${interaction.user.username}`;
+
+            try {
+                // Ticket Kanalını Oluşturma
+                const ticketKanali = await interaction.guild.channels.create({
+                    name: kanalIsmi,
+                    type: ChannelType.GuildText,
+                    parent: TICKET_KATEGORI_ID || null, // Varsa kategorinin içine açar
+                    permissionOverwrites: [
+                        {
+                            id: interaction.guild.id,
+                            deny: [PermissionFlagsBits.ViewChannel], // Herkese gizle
+                        },
+                        {
+                            id: interaction.user.id,
+                            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory], // Açan kişiye aç
+                        },
+                        {
+                            id: DESTEK_ROL_ID,
+                            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages], // Destek ekibine aç
+                        },
+                        {
+                            id: YETKILI_ROL_ID,
+                            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages], // Yetkili ekibine aç
+                        }
+                    ],
+                });
+
+                // Kanal içine gidecek karşılama mesajı ve kapatma butonu
+                const kapatRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('ticket_kapat')
+                        .setLabel('Talebi Kapat')
+                        .setStyle(ButtonStyle.Danger)
+                        .setEmoji('🔒')
+                );
+
+                const hosgeldinEmbed = new EmbedBuilder()
+                    .setTitle(`💜 Destek Kanalı Açıldı`)
+                    .setDescription(`Merhaba ${interaction.user}, **${secilenKategori.replace('_', ' ').toUpperCase()}** konulu destek talebiniz başarıyla oluşturuldu.\n\nYetkililerimiz en kısa sürede sizinle ilgilenecektir. Talebi sonlandırmak isterseniz aşağıdaki butona basabilirsiniz.`)
+                    .setColor('#8A2BE2')
+                    .setTimestamp();
+
+                await ticketKanali.send({ content: `${interaction.user} | <@&${DESTEK_ROL_ID}>`, embeds: [hosgeldinEmbed], components: [kapatRow] });
+
+                // Paneli kullanan kişiye gizli onay mesajı
+                await interaction.editReply({ content: `✅ Destek kanalınız başarıyla oluşturuldu: ${ticketKanali}` });
+
+            } catch (error) {
+                console.error(error);
+                await interaction.editReply({ content: '❌ Ticket kanalı oluşturulurken bir hata meydana geldi. Lütfen yetkililere bildirin.' });
             }
         }
     }
