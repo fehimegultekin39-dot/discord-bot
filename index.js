@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder, StringSelectMenuBuilder, MessageFlags, PermissionsBitField } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder, StringSelectMenuBuilder, PermissionsBitField } = require('discord.js');
 const { QuickDB } = require('quick.db');
 const db = new QuickDB();
 const express = require('express');
@@ -195,7 +195,7 @@ client.on('interactionCreate', async interaction => {
             const ekNot = interaction.options.getString('not');
             
             const guildMember = await interaction.guild.members.fetch(yetkili.id);
-            if (!guildMember.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Sadece **Yetkili Ekibi** rolündekilere vouch atılabilir.', flags: MessageFlags.Ephemeral });
+            if (!guildMember.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Sadece **Yetkili Ekibi** rolündekilere vouch atılabilir.', ephemeral: true });
             
             await db.add(`vouch_${yetkili.id}`, 1);
             const toplam = await db.get(`vouch_${yetkili.id}`);
@@ -294,7 +294,7 @@ client.on('interactionCreate', async interaction => {
                 }
             }
             
-            if (!msDur || isNaN(msDur)) return interaction.reply({ content: '❌ Geçersiz süre formatı! (Örnek: 30sn, 15dk, 12saat, 1gün)', flags: MessageFlags.Ephemeral });
+            if (!msDur || isNaN(msDur)) return interaction.reply({ content: '❌ Geçersiz süre formatı! (Örnek: 30sn, 15dk, 12saat, 1gün)', ephemeral: true });
             
             const simdi = Math.floor(Date.now() / 1000);
             const bitis = simdi + Math.floor(msDur / 1000);
@@ -329,7 +329,7 @@ client.on('interactionCreate', async interaction => {
 
         // MODERASYON SİSTEMİ
         if (['ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
-            if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: 'Yetkin yok!', flags: MessageFlags.Ephemeral });
+            if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: 'Yetkin yok!', ephemeral: true });
             
             if (interaction.commandName === 'ban') { const m = interaction.options.getMember('kisi'); await m.ban(); await interaction.reply(`${m.user.tag} banlandı.`); }
             if (interaction.commandName === 'unban') { await interaction.guild.members.unban(interaction.options.getString('kisi_id')); await interaction.reply('Ban kalktı.'); }
@@ -352,7 +352,7 @@ client.on('interactionCreate', async interaction => {
                     }
                 }
                 
-                if (!msDur || isNaN(msDur)) return interaction.reply({ content: '❌ Geçersiz süre formatı! (Örnek: 30sn, 15dk, 12saat, 1gün)', flags: MessageFlags.Ephemeral });
+                if (!msDur || isNaN(msDur)) return interaction.reply({ content: '❌ Geçersiz süre formatı! (Örnek: 30sn, 15dk, 12saat, 1gün)', ephemeral: true });
                 
                 await m.timeout(msDur, 'Mute Komutu'); 
                 await interaction.reply(`✅ ${m} kullanıcısı **${sureInput}** boyunca susturuldu.`); 
@@ -409,24 +409,24 @@ client.on('interactionCreate', async interaction => {
     else if (interaction.isStringSelectMenu()) {
         if (interaction.customId === 'ticket_secim') {
             const secim = interaction.values[0];
-            await interaction.reply({ content: '🔄 Destek talebiniz oluşturuluyor, lütfen bekleyin...', flags: MessageFlags.Ephemeral });
+            await interaction.reply({ content: '🔄 Destek talebiniz oluşturuluyor, lütfen bekleyin...', ephemeral: true });
 
             const kategoriIsimleri = {
-                'cekilis_kazandim': 'ticket-çekiliş',
+                'cekilis_kazandim': 'ticket-cekilis',
                 'drop_kazandim': 'ticket-drop',
-                'hesap_satinal': 'ticket-satınalma',
+                'hesap_satinal': 'ticket-satinalma',
                 'partnerlik': 'ticket-partner',
-                'yetkili_alim': 'ticket-başvuru',
+                'yetkili_alim': 'ticket-basvuru',
                 'teknik_destek': 'ticket-destek',
-                'sikayet_oneri': 'ticket-şikayet',
-                'diger': 'ticket-diğer'
+                'sikayet_oneri': 'ticket-sikayet',
+                'diger': 'ticket-diger'
             };
 
-            const canalAdi = `${kategoriIsimleri[secim] || 'ticket'}-${interaction.user.username}`;
+            const kanalAdi = `${kategoriIsimleri[secim] || 'ticket'}-${interaction.user.username}`;
 
             try {
                 const ticketKanal = await interaction.guild.channels.create({
-                    name: canalAdi,
+                    name: kanalAdi,
                     type: 0,
                     permissionOverwrites: [
                         { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
@@ -438,7 +438,7 @@ client.on('interactionCreate', async interaction => {
 
                 const ticketEmbed = new EmbedBuilder()
                     .setTitle('🎟️ Drop Zone TR — Destek Bileti')
-                    .setDescription(`Merhaba ${interaction.user}, biletiniz başarıyla açıldı!\nYetkililerimiz en kısa sürede sizinle ilgilenecektir.\n\n**Seçtiğiniz Kategori:** \`${canalAdi.split('-')[1].toUpperCase()}\``)
+                    .setDescription(`Merhaba ${interaction.user}, biletiniz başarıyla açıldı!\nYetkililerimiz en kısa sürede sizinle ilgilenecektir.\n\n**Seçtiğiniz Kategori:** \`${kanalAdi.split('-')[1].toUpperCase()}\``)
                     .setColor('#8A2BE2')
                     .setFooter({ text: 'Bileti kapatmak için aşağıdaki butona tıklayabilirsiniz.' })
                     .setTimestamp();
@@ -465,7 +465,7 @@ client.on('interactionCreate', async interaction => {
         // TICKET KAPATMA BUTONU
         if (interaction.customId === 'ticket_kapat') {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
-                return interaction.reply({ content: '❌ **Yetki Yetersiz:** Bu bileti sadece yetkili ekibi kapatabilir.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ **Yetki Yetersiz:** Bu bileti sadece yetkili ekibi kapatabilir.', ephemeral: true });
             }
 
             await interaction.reply({ content: '🔒 Bu bilet kanalı 5 saniye içinde siliniyor...' });
@@ -481,11 +481,11 @@ client.on('interactionCreate', async interaction => {
             const dropVeri = await db.get(`drop_data_${dropId}`);
 
             if (!dropVeri) {
-                return interaction.reply({ content: '❌ Bu drop verisine ulaşılamadı.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ Bu drop verisine ulaşılamadı.', ephemeral: true });
             }
 
             if (dropVeri.bitti === true) {
-                return interaction.reply({ content: '❌ Bu drop ödülü daha önce başkası tarafından kapılmış!', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ Bu drop ödülü daha önce başkası tarafından kapılmış!', ephemeral: true });
             }
 
             await db.set(`drop_data_${dropId}.bitti`, true);
@@ -515,44 +515,44 @@ client.on('interactionCreate', async interaction => {
                     .setTimestamp();
 
                 await interaction.update({ embeds: [kazananEmbed], components: [] });
-                await interaction.followUp({ content: `✅ **Tebrikler!** Ödülün DM kutuna başarıyla gönderildi!`, flags: MessageFlags.Ephemeral });
+                await interaction.followUp({ content: `✅ **Tebrikler!** Ödülün DM kutuna başarıyla gönderildi!`, ephemeral: true });
 
             } catch (dmHata) {
                 console.error("DM gönderilemedi:", dmHata);
                 await db.set(`drop_data_${dropId}.bitti`, false); 
-                return interaction.reply({ content: '❌ **Ödül Alınamadı:** DM kutun kapalı olduğu için bot sana mesaj gönderemedi! Lütfen gizlilik ayarlarından sunucu üyelerinden gelen mesajlara izin verip tekrar butona bas.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ **Ödül Alınamadı:** DM kutun kapalı olduğu için bot sana mesaj gönderemedi! Lütfen gizlilik ayarlarından sunucu üyelerinden gelen mesajlara izin verip tekrar butona bas.', ephemeral: true });
             }
         }
 
         // YENİDEN ÇEK (REROLL) BUTON SİSTEMİ
         if (interaction.customId.startsWith('cekilis_reroll_')) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
-                return interaction.reply({ content: '❌ **Yetki Yetersiz:** Bu butonu sadece yetkili ekibi kullanabilir.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ **Yetki Yetersiz:** Bu butonu sadece yetkili ekibi kullanabilir.', ephemeral: true });
             }
 
             const messageId = interaction.customId.replace('cekilis_reroll_', '');
             const veri = await db.get(`cekilis_${messageId}`);
 
             if (!veri) {
-                return interaction.reply({ content: '❌ Bu çekilişe ait veritabanı kaydı bulunamadı.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ Bu çekilişe ait veritabanı kaydı bulunamadı.', ephemeral: true });
             }
 
             try {
                 const targetMessage = await interaction.channel.messages.fetch(messageId).catch(() => null);
                 if (!targetMessage) {
-                    return interaction.reply({ content: '❌ Çekiliş mesajına ulaşılamadı.', flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: '❌ Çekiliş mesajına ulaşılamadı.', ephemeral: true });
                 }
 
                 const reaction = targetMessage.reactions.cache.get('🎉');
                 if (!reaction) {
-                    return interaction.reply({ content: '❌ Katılımcı reaksiyonu (🎉) bulunamadı.', flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: '❌ Katılımcı reaksiyonu (🎉) bulunamadı.', ephemeral: true });
                 }
 
                 await reaction.users.fetch();
                 const katilimcilar = reaction.users.cache.filter(u => !u.bot);
 
                 if (katilimcilar.size === 0) {
-                    return interaction.reply({ content: '❌ Çekilişte reaksiyon veren geçerli kullanıcı kalmadığı için yeniden çekilemiyor.', flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: '❌ Çekilişte reaksiyon veren geçerli kullanıcı kalmadığı için yeniden çekilemiyor.', ephemeral: true });
                 }
 
                 const yeniKazananlar = katilimcilar.random(Math.min(veri.count, katilimcilar.size));
@@ -574,12 +574,12 @@ client.on('interactionCreate', async interaction => {
                     .setTimestamp();
 
                 await targetMessage.edit({ embeds: [yeniEmbed] });
-                await interaction.reply({ content: `✅ Çekiliş başarıyla yeniden sonuçlandırıldı!`, flags: MessageFlags.Ephemeral });
-                await interaction.channel.send(`🎉 **Çekiliş Yeniden Çekildi!** Yeni Kazanan(lar): ${kazananMention} 💜`);
+                await interaction.reply({ content: `✅ Çekiliş başarıyla yeniden sonuçlandırıldı!`, ephemeral: true });
+                await interaction.channel.send(`🎉 **Çekiliş Yenilenen Sonuç!** Yeni Kazanan(lar): ${kazananMention} 💜`);
 
             } catch (err) {
                 console.error(err);
-                await interaction.reply({ content: '❌ Yeniden çekme işlemi esnasında teknik bir hata oluştu.', flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: '❌ Yeniden çekme işlemi esnasında teknik bir hata oluştu.', ephemeral: true });
             }
         }
 
@@ -588,38 +588,45 @@ client.on('interactionCreate', async interaction => {
             const parcalar = interaction.customId.split('_'); 
             const tip = parcalar[1];
             const anketId = parcalar[2];
+
+            const soru = await db.get(`anket_${anketId}_soru`);
+            if (!soru) return interaction.reply({ content: '❌ Bu anket veritabanında bulunamadı.', ephemeral: true });
+
+            let evetDizi = await db.get(`anket_${anketId}_evet`) || [];
+            let hayirDizi = await db.get(`anket_${anketId}_hayir`) || [];
             const userId = interaction.user.id;
 
-            let evetOylari = await db.get(`anket_${anketId}_evet`) || [];
-            let hayirOylari = await db.get(`anket_${anketId}_hayir`) || [];
-            const soru = await db.get(`anket_${anketId}_soru`) || "Bilinmeyen Soru";
-            const sahip = await db.get(`anket_${anketId}_sahip`) || "Bilinmiyor";
-
             if (tip === 'evet') {
-                if (evetOylari.includes(userId)) return interaction.reply({ content: '❌ Zaten **Evet** oyu vermişsiniz!', flags: MessageFlags.Ephemeral });
-                if (hayirOylari.includes(userId)) hayirOylari = hayirOylari.filter(id => id !== userId);
-                evetOylari.push(userId);
+                if (evetDizi.includes(userId)) {
+                    evetDizi = evetDizi.filter(id => id !== userId);
+                } else {
+                    evetDizi.push(userId);
+                    hayirDizi = hayirDizi.filter(id => id !== userId);
+                }
             } else if (tip === 'hayir') {
-                if (hayirOylari.includes(userId)) return interaction.reply({ content: '❌ Zaten **Hayır** oyu vermişsiniz!', flags: MessageFlags.Ephemeral });
-                if (evetOylari.includes(userId)) evetOylari = evetOylari.filter(id => id !== userId);
-                hayirOylari.push(userId);
+                if (hayirDizi.includes(userId)) {
+                    hayirDizi = hayirDizi.filter(id => id !== userId);
+                } else {
+                    hayirDizi.push(userId);
+                    evetDizi = evetDizi.filter(id => id !== userId);
+                }
             }
 
-            await db.set(`anket_${anketId}_evet`, evetOylari);
-            await db.set(`anket_${anketId}_hayir`, hayirOylari);
+            await db.set(`anket_${anketId}_evet`, evetDizi);
+            await db.set(`anket_${anketId}_hayir`, hayirDizi);
 
-            const toplamOy = evetOylari.length + hayirOylari.length;
-            const evetYuzde = toplamOy === 0 ? 0 : Math.round((evetOylari.length / toplamOy) * 100);
-            const hayirYuzde = toplamOy === 0 ? 0 : Math.round((hayirOylari.length / toplamOy) * 100);
+            const tOy = evetDizi.length + hayirDizi.length;
+            const eYuzde = tOy === 0 ? 0 : Math.round((evetDizi.length / tOy) * 100);
+            const hYuzde = tOy === 0 ? 0 : Math.round((hayirDizi.length / tOy) * 100);
 
-            const yeniEmbed = new EmbedBuilder()
+            const guncelEmbed = new EmbedBuilder()
                 .setTitle('📊 DROP ZONE TR - ANKET')
-                .setDescription(`**Soru:** ${soru}\n\n🟩 **Evet:** \`${evetYuzde}%\` (${evetOylari.length} Oy)\n🟥 **Hayır:** \`${hayirYuzde}%\` (${hayirOylari.length} Oy)`)
+                .setDescription(`**Soru:** ${soru}\n\n🟩 **Evet:** \`${eYuzde}%\` (${evetDizi.length} Oy)\n🟥 **Hayır:** \`${hYuzde}%\` (${hayirDizi.length} Oy)`)
                 .setColor('#8A2BE2')
-                .setFooter({ text: `Anketi Başlatan: ${sahip}` })
+                .setFooter({ text: `Anketi Başlatan: ${await db.get(`anket_${anketId}_sahip`)}` })
                 .setTimestamp();
 
-            await interaction.update({ embeds: [yeniEmbed] });
+            await interaction.update({ embeds: [guncelEmbed] });
         }
     }
 });
