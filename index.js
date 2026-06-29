@@ -11,7 +11,8 @@ const {
     SlashCommandBuilder, 
     StringSelectMenuBuilder,
     ChannelType,
-    PermissionFlagsBits
+    PermissionFlagsBits,
+    AttachmentBuilder // TXT dosyası göndermek için eklendi
 } = require('discord.js');
 const { QuickDB } = require('quick.db');
 const db = new QuickDB();
@@ -59,9 +60,8 @@ const client = new Client({
 const commands = [
     new SlashCommandBuilder()
         .setName('drop')
-        .setDescription('Ödüllü otomatik drop başlatır.')
-        .addStringOption(o => o.setName('gorunen').setDescription('Kanala yansıyacak ödül ismi (Örn: 1x Minecraft Premium)').setRequired(true))
-        .addStringOption(o => o.setName('teslim_edilecek_odul').setDescription('Kazananın DMsine gidecek gizli hesap/kod/link').setRequired(true)),
+        .setDescription('66 Adet Steam hesaplı otomatik drop başlatır.')
+        .addStringOption(o => o.setName('gorunen').setDescription('Kanala yansıyacak ödül ismi (Örn: 66x Steam Premium Hesap)').setRequired(true)),
         
     new SlashCommandBuilder().setName('cekilis').setDescription('Yeni çekiliş başlatır.').addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)).addIntegerOption(o => o.setName('kazanan_sayisi').setDescription('Kazanan sayısı').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)),
     new SlashCommandBuilder().setName('ticketpanel').setDescription('Destek panelini gönderir.'),
@@ -292,17 +292,14 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
-        // --- DROP KOMUTU ---
+        // --- DROP KOMUTU (GÜNCELLENDİ) ---
         if (interaction.commandName === 'drop') {
             const gorunenOdul = interaction.options.getString('gorunen');
-            const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
-            
             const dropId = Date.now();
             const customId = `drop_${dropId}`;
             
             await db.set(`drop_data_${dropId}`, {
                 gorunen: gorunenOdul,
-                gizli: gizliOdul,
                 baslatan: interaction.user.username,
                 bitti: false
             });
@@ -317,7 +314,7 @@ client.on('interactionCreate', async interaction => {
             
             const baslangicEmbed = new EmbedBuilder()
                 .setTitle('🎉 DROP ZONE TR DROP!')
-                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülın sahibi olur ogün ödül otomatik olarak DM kutusuna gönderilir!*`)
+                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve 66 Adet Steam Hesabı içeren TXT dosyası anında DM kutusuna gönderilir!*`)
                 .setColor('#8A2BE2')
                 .setFooter({ text: `Drop Zone TR • Başlatan: @${interaction.user.username}` })
                 .setTimestamp();
@@ -497,7 +494,7 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        // --- DROP BUTONU ---
+        // --- DROP BUTONU (HESAP LİSTESİ BURADA OLUŞTURULUYOR) ---
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const veri = await db.get(`drop_data_${dropId}`);
@@ -507,19 +504,31 @@ client.on('interactionCreate', async interaction => {
 
             await db.set(`drop_data_${dropId}.bitti`, true);
             
+            // Buraya 66 adet rastgele örnek Steam hesabı ekledim. Bunları kendi gerçek hesaplarınla değiştirebilirsin.
+            let hesapIcerigi = "";
+            for(let i = 1; i <= 66; i++) {
+                hesapIcerigi += `Hesap_${i}_KullaniciAdi:Sifre1234 - [Steam Premium Account]\n`;
+            }
+
+            // İçeriği buffer formatında .txt dosyasına dönüştürüyoruz
+            const txtDosyası = new AttachmentBuilder(Buffer.from(hesapIcerigi, 'utf-8'), { name: 'steam_hesaplari_66x.txt' });
+
             try {
-                await interaction.user.send(`🎉 Tebrikler! **${veri.gorunen}** kazandın!\n\n🎁 **Teslim Edilen Ödül:** \`${veri.gizli}\``);
+                await interaction.user.send({
+                    content: `🎉 Tebrikler! **${veri.gorunen}** dropunu kazandın!\n🎁 Toplam 66 Adet Steam hesabı aşağıda bulunan **.txt** dosyasının içindedir. Bilgisayarına veya telefonuna indirerek kullanabilirsin!`,
+                    files: [txtDosyası]
+                });
             } catch (err) {
-                return interaction.reply({ content: 'Ödülü kazandın fakat DM kutun kapalı olduğu için sana gizli kodu iletemedim! Lütfen DM kutunu açıp yetkililere ulaş.', ephemeral: true });
+                return interaction.reply({ content: 'Ödülü kazandın fakat DM kutun kapalı olduğu için sana .txt dosyasını iletemedim! Lütfen DM kutunu açıp yetkililere ulaş.', ephemeral: true });
             }
 
             const embed = interaction.message.embeds[0];
             const guncellenmisEmbed = EmbedBuilder.from(embed)
-                .setDescription(`**Ödül:** \`${veri.gorunen}\`\n\n🎉 **Bu drop ${interaction.user} tarafından kapıldı!**`)
+                .setDescription(`**Ödül:** \`${veri.gorunen}\`\n\n🎉 **Bu drop ${interaction.user} tarafından kapıldı ve 66 Hesap DM kutusuna gönderildi!**`)
                 .setColor('#00FF00');
             
             await interaction.update({ embeds: [guncellenmisEmbed], components: [] });
-            await interaction.channel.send(`🎉 ${interaction.user}, hızlı davrandı ve **${veri.gorunen}** ödülünü kaptı!`);
+            await interaction.channel.send(`🎉 ${interaction.user}, harika bir hızla butona bastı ve **${veri.gorunen}** dropunun sahibi oldu! 66 adet hesabı teslim aldı.`);
         }
 
         // --- ÇEKİLİŞ REROLL BUTONU ---
