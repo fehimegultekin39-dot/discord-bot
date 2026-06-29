@@ -462,16 +462,9 @@ client.on('interactionCreate', async interaction => {
                 .setCustomId('free_log_secim')
                 .setPlaceholder('Almak istediğiniz Booster içeriğini seçin...')
                 .addOptions(
-                    new StringSelectMenuOptionBuilder()
-                        .setLabel('Nitro Booster Log')
-                        .setDescription('Stokta: 3233 tane mevcut')
-                        .setValue('booster_nitro')
-                        .setEmoji('🚀'),
-                    new StringSelectMenuOptionBuilder()
-                        .setLabel('Booster Özel Hesap')
-                        .setDescription('Stokta: 1120 tane mevcut')
-                        .setValue('booster_account')
-                        .setEmoji('🎮')
+                    new StringSelectMenuOptionBuilder().setLabel('Nitro Booster Log').setDescription('Stokta: 350 tane mevcut').setValue('booster_nitro').setEmoji('🚀'),
+                    new StringSelectMenuOptionBuilder().setLabel('Valorant Booster Hesap').setDescription('Stokta: 210 tane mevcut').setValue('booster_val').setEmoji('🔫'),
+                    new StringSelectMenuOptionBuilder().setLabel('Exxen Premium Log').setDescription('Stokta: 180 tane mevcut').setValue('booster_exxen').setEmoji('🎬')
                 );
             await interaction.reply({ content: '⚫ **Black Market Booster Log** listesi:', components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
             return;
@@ -482,16 +475,9 @@ client.on('interactionCreate', async interaction => {
                 .setCustomId('free_log_secim')
                 .setPlaceholder('Almak istediğiniz VIP içeriğini seçin...')
                 .addOptions(
-                    new StringSelectMenuOptionBuilder()
-                        .setLabel('VIP Premium Key')
-                        .setDescription('Stokta: 1450 tane mevcut')
-                        .setValue('vip_key')
-                        .setEmoji('💎'),
-                    new StringSelectMenuOptionBuilder()
-                        .setLabel('VIP Özel Metin Belgesi')
-                        .setDescription('Stokta: 850 tane mevcut')
-                        .setValue('vip_txt')
-                        .setEmoji('📝')
+                    new StringSelectMenuOptionBuilder().setLabel('VIP Premium Key').setDescription('Stokta: 240 tane mevcut').setValue('vip_key').setEmoji('💎'),
+                    new StringSelectMenuOptionBuilder().setLabel('Anzium Özel Paket').setDescription('Stokta: 150 tane mevcut').setValue('vip_anzium').setEmoji('💥'),
+                    new StringSelectMenuOptionBuilder().setLabel('Zula Altın Log').setDescription('Stokta: 310 tane mevcut').setValue('vip_zula').setEmoji('👑')
                 );
             await interaction.reply({ content: '⚫ **Black Market VIP Log** listesi:', components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
             return;
@@ -502,16 +488,8 @@ client.on('interactionCreate', async interaction => {
                 .setCustomId('free_log_secim')
                 .setPlaceholder('Almak istediğiniz Invite içeriğini seçin...')
                 .addOptions(
-                    new StringSelectMenuOptionBuilder()
-                        .setLabel('5 Invite Ödülü Log')
-                        .setDescription('Stokta: 2100 tane mevcut')
-                        .setValue('invite_5')
-                        .setEmoji('📨'),
-                    new StringSelectMenuOptionBuilder()
-                        .setLabel('10 Invite Ödülü Log')
-                        .setDescription('Stokta: 1320 tane mevcut')
-                        .setValue('invite_10')
-                        .setEmoji('➕')
+                    new StringSelectMenuOptionBuilder().setLabel('5 Invite: Gain Premium').setDescription('Stokta: 190 tane mevcut').setValue('invite_gain').setEmoji('📺'),
+                    new StringSelectMenuOptionBuilder().setLabel('10 Invite: Valorant Random').setDescription('Stokta: 165 tane mevcut').setValue('invite_val_mega').setEmoji('🎯')
                 );
             await interaction.reply({ content: '⚫ **Black Market Invite Log** listesi:', components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
             return;
@@ -522,16 +500,9 @@ client.on('interactionCreate', async interaction => {
                 .setCustomId('free_log_secim')
                 .setPlaceholder('Almak istediğiniz içeriği seçin...')
                 .addOptions(
-                    new StringSelectMenuOptionBuilder()
-                        .setLabel('Steam Account')
-                        .setDescription('Stokta: 39832 tane mevcut')
-                        .setValue('free_steam')
-                        .setEmoji('🎮'),
-                    new StringSelectMenuOptionBuilder()
-                        .setLabel('Minecraft Premium')
-                        .setDescription('Stokta: 2213 tane mevcut')
-                        .setValue('free_minecraft')
-                        .setEmoji('⛏️')
+                    new StringSelectMenuOptionBuilder().setLabel('Steam Account').setDescription('Stokta: 380 tane mevcut').setValue('free_steam').setEmoji('🎮'),
+                    new StringSelectMenuOptionBuilder().setLabel('Minecraft Premium').setDescription('Stokta: 290 tane mevcut').setValue('free_minecraft').setEmoji('⛏️'),
+                    new StringSelectMenuOptionBuilder().setLabel('Zula Hesap Havuzu').setDescription('Stokta: 340 tane mevcut').setValue('free_zula').setEmoji('⚔️')
                 );
 
             const row = new ActionRowBuilder().addComponents(menu);
@@ -554,7 +525,7 @@ client.on('interactionCreate', async interaction => {
 
             await db.set(`drop_data_${dropId}.bitti`, true);
             
-            const platformlar = ["Steam", "Exxen", "Anzium", "Zula", "Valorant", "Minecraft_Premium"];
+            const platformlar = ["Steam", "Exxen", "Anzium", "Zula", "Valorant", "Minecraft_Premium", "Gain"];
             let hesapIcerigi = "=== BLACK MARKET - 66x PREMIUM MIX HESAP LISTESI ===\n\n";
 
             for (let i = 1; i <= 66; i++) {
@@ -641,9 +612,9 @@ client.on('interactionCreate', async interaction => {
             let contentLabel = "";
 
             // Rastgele kelimeler ve uzantılar havuzu (Gerçekçi görünüm için)
-            const isimler = ["berk", "emir", "r2xzzs", "snazy", "kaon", "apex", "vortex", "shadow", "ghost", "dark", "alpha", "legend", "tr", "pro", "king", "lord", "matrix", "hacker"];
+            const isimler = ["berk", "emir", "r2xzzs", "snazy", "kaon", "apex", "vortex", "shadow", "ghost", "dark", "alpha", "legend", "tr", "pro", "king", "lord", "matrix", "hacker", "jett", "reyna", "zula_pro"];
             const domainler = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com", "mail.ru", "yandex.com"];
-            const ozelSifreler = ["123456789", "bjk1903", "gs1905", "fb1907", "kralsensin", "sifre123", "password", "deneme12", "mustafa", "ahmet", "mehmet", "anadolu"];
+            const ozelSifreler = ["123456789", "bjk1903", "gs1905", "fb1907", "kralsensin", "sifre123", "password", "deneme12", "mustafa", "ahmet", "valopass", "exxen99"];
 
             // 15 satırlık tamamen karışık combo üreten yardımcı fonksiyon
             const randomComboUret = (baslik) => {
@@ -669,43 +640,55 @@ client.on('interactionCreate', async interaction => {
 
             // Seçilen değere göre dosya adı ve içeriği tetikleniyor
             if (secim === 'free_steam') {
-                fileName = "blackmarket_free_steam_39832.txt";
+                fileName = "blackmarket_free_steam_380.txt";
                 contentLabel = "Steam Account";
                 listContent = randomComboUret("BLACK MARKET FREE STEAM");
             } else if (secim === 'free_minecraft') {
-                fileName = "blackmarket_free_minecraft_2213.txt";
+                fileName = "blackmarket_free_minecraft_290.txt";
                 contentLabel = "Minecraft Premium";
                 listContent = randomComboUret("BLACK MARKET FREE MINECRAFT PREMIUM");
+            } else if (secim === 'free_zula') {
+                fileName = "blackmarket_free_zula_340.txt";
+                contentLabel = "Zula Hesap Havuzu";
+                listContent = randomComboUret("BLACK MARKET FREE ZULA ACCOUNTS");
             } else if (secim === 'booster_nitro') {
-                fileName = "blackmarket_booster_nitro_3233.txt";
+                fileName = "blackmarket_booster_nitro_350.txt";
                 contentLabel = "Nitro Booster Log";
                 listContent = "=== BLACK MARKET BOOSTER NITRO LOGS ===\n";
                 for(let i=1; i<=15; i++) {
                     listContent += `https://discord.gift/${Math.random().toString(36).substring(2, 18).toUpperCase()}\n`;
                 }
-            } else if (secim === 'booster_account') {
-                fileName = "blackmarket_booster_acc_1120.txt";
-                contentLabel = "Booster Özel Hesap";
-                listContent = randomComboUret("BLACK MARKET BOOSTER SPECIAL ACCOUNT");
+            } else if (secim === 'booster_val') {
+                fileName = "blackmarket_booster_valorant_210.txt";
+                contentLabel = "Valorant Booster Hesap";
+                listContent = randomComboUret("BLACK MARKET VALORANT BOOSTER PACK");
+            } else if (secim === 'booster_exxen') {
+                fileName = "blackmarket_booster_exxen_180.txt";
+                contentLabel = "Exxen Premium Log";
+                listContent = randomComboUret("BLACK MARKET EXXEN PREMIUM");
             } else if (secim === 'vip_key') {
-                fileName = "blackmarket_vip_keys_1450.txt";
+                fileName = "blackmarket_vip_keys_240.txt";
                 contentLabel = "VIP Premium Key";
                 listContent = "=== BLACK MARKET VIP PREMIUM KEYS ===\n";
                 for(let i=1; i<=15; i++) {
                     listContent += `KEY-BM-VIP-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Math.floor(Math.random()*9000+1000)}\n`;
                 }
-            } else if (secim === 'vip_txt') {
-                fileName = "blackmarket_vip_special_850.txt";
-                contentLabel = "VIP Özel Metin Belgesi";
-                listContent = "=== BLACK MARKET VIP SPECIAL METHOD ===\nMethod: Private Discord Custom Bypass Auth...\nBypass Token: " + Math.random().toString(36).substring(2, 15);
-            } else if (secim === 'invite_5') {
-                fileName = "blackmarket_invite5_2100.txt";
-                contentLabel = "5 Invite Ödülü Log";
-                listContent = randomComboUret("BLACK MARKET 5 INVITE REWARD");
-            } else if (secim === 'invite_10') {
-                fileName = "blackmarket_invite10_1320.txt";
-                contentLabel = "10 Invite Ödülü Log";
-                listContent = randomComboUret("BLACK MARKET 10 INVITE REWARD");
+            } else if (secim === 'vip_anzium') {
+                fileName = "blackmarket_vip_anzium_150.txt";
+                contentLabel = "Anzium Özel Paket";
+                listContent = randomComboUret("BLACK MARKET ANZIUM PRIVATE METHOD/LOG");
+            } else if (secim === 'vip_zula') {
+                fileName = "blackmarket_vip_zula_310.txt";
+                contentLabel = "Zula Altın Log";
+                listContent = randomComboUret("BLACK MARKET VIP ZULA GOLD PACK");
+            } else if (secim === 'invite_gain') {
+                fileName = "blackmarket_invite_gain_190.txt";
+                contentLabel = "5 Invite: Gain Premium";
+                listContent = randomComboUret("BLACK MARKET GAIN PREMIUM INVITE REWARD");
+            } else if (secim === 'invite_val_mega') {
+                fileName = "blackmarket_invite_val_165.txt";
+                contentLabel = "10 Invite: Valorant Random";
+                listContent = randomComboUret("BLACK MARKET VALORANT 10 INVITE REWARD MEGA PACK");
             }
 
             const txtAttachment = new AttachmentBuilder(Buffer.from(listContent, 'utf-8'), { name: fileName });
@@ -773,4 +756,4 @@ client.on('interactionCreate', async interaction => {
                 permissionOverwrites: [
                     { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
                     { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-                    { id: DESTEKNormally I can help with things like this, but I don't seem to have access to that content. You can try again or ask me for something else.
+                    { id: DENormally I can help with things like this, but I don't seem to have access to that content. You can try again or ask me for something else.
