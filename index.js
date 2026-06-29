@@ -188,11 +188,9 @@ client.on('interactionCreate', async interaction => {
         if (interaction.commandName === 'log-panel') {
             const embed = new EmbedBuilder()
                 .setTitle('🛒 **Black Market - Log Sistemi**')
-                .setDescription('Aşağıdaki butonlardan istediğiniz log türünü seçin.\n\n**Free Log** seçeneğinde istediğiniz hesabı belirleyip direkt DM kutunuza alabilirsiniz.')
+                .setDescription('Aşağıdaki butonlardan istediğiniz log türünü seçin.\n\nSeçtiğiniz paketlerin stok detayları alt menüde listelenecek ve dosya direkt DM kutunuza iletilecektir.')
                 .setColor('#000000')
-                .setFooter({ 
-                    text: 'Black Market • Log Management System'
-                })
+                .setFooter({ text: 'Black Market • Log Management System' })
                 .setTimestamp();
 
             const row = new ActionRowBuilder().addComponents(
@@ -243,7 +241,6 @@ client.on('interactionCreate', async interaction => {
             const guildMember = await interaction.guild.members.fetch(yetkili.id);
             if (!guildMember.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Sadece **Yetkili Ekibi** rolündekilere vouch atılabilir.', ephemeral: true });
             
-            // Sayaç sıfırdan başlıyor
             const mevcutVouch = await db.get(`vouch_${yetkili.id}`);
             if (mevcutVouch === null || mevcutVouch === undefined) {
                 await db.set(`vouch_${yetkili.id}`, 0);
@@ -264,9 +261,7 @@ client.on('interactionCreate', async interaction => {
                     { name: '📝 Not', value: ekNot, inline: false }
                 )
                 .setColor('#000000')
-                .setFooter({ 
-                    text: `Vouch Ekleyen: ${interaction.user.username}`
-                })
+                .setFooter({ text: `Vouch Ekleyen: ${interaction.user.username}` })
                 .setTimestamp();
             
             await interaction.reply({ embeds: [embed] });
@@ -461,35 +456,67 @@ client.on('interactionCreate', async interaction => {
 
     if (interaction.isButton()) {
         
-        // --- LOG SİSTEMİ BUTON ETKİLEŞİMLERİ ---
-        if (['booster_log', 'vip_log', 'invite_log'].includes(interaction.customId)) {
-            const logKanal = await client.channels.fetch(LOG_KANAL_ID).catch(() => null);
-            if (!logKanal) return interaction.reply({ content: '❌ Log kanalı bulunamadı!', ephemeral: true });
-
-            let title = '', emoji = '';
-            switch (interaction.customId) {
-                case 'booster_log': title = '🚀 BOOSTER İŞLEMİ'; emoji = '🚀'; break;
-                case 'vip_log':     title = '💎 VIP İŞLEMİ';      emoji = '💎'; break;
-                case 'invite_log':  title = '📨 İNVİTE İŞLEMİ';  emoji = '📨'; break;
-            }
-
-            const logEmbed = new EmbedBuilder()
-                .setTitle(title)
-                .setDescription(`**İşlem Türü:** ${emoji} ${interaction.customId.replace('_log', '').toUpperCase()}\n**Yetkili:** ${interaction.user}\n**Tarih:** <t:${Math.floor(Date.now()/1000)}:F>`)
-                .setColor('#000000')
-                .setFooter({ text: `Black Market • Log ID: ${Date.now()}` })
-                .setTimestamp();
-
-            await logKanal.send({ embeds: [logEmbed] });
-
-            await interaction.reply({
-                embeds: [new EmbedBuilder().setDescription(`✅ **${emoji} ${title}** log kanalına gönderildi!`).setColor('#000000')],
-                ephemeral: true
-            });
+        // --- LOG SİSTEMİ BUTON ETKİLEŞİMLERİ (ADETLİ YENİ SİSTEMLER) ---
+        if (interaction.customId === 'booster_log') {
+            const menu = new StringSelectMenuBuilder()
+                .setCustomId('free_log_secim')
+                .setPlaceholder('Almak istediğiniz Booster içeriğini seçin...')
+                .addOptions(
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel('Nitro Booster Log')
+                        .setDescription('Stokta: 3233 tane mevcut')
+                        .setValue('booster_nitro')
+                        .setEmoji('🚀'),
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel('Booster Özel Hesap')
+                        .setDescription('Stokta: 1120 tane mevcut')
+                        .setValue('booster_account')
+                        .setEmoji('🎮')
+                );
+            await interaction.reply({ content: '⚫ **Black Market Booster Log** listesi:', components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
             return;
         }
 
-        // --- TAM İSTEDİĞİN FREE LOG ALTYAPISI (image_cac7bd.png) ---
+        if (interaction.customId === 'vip_log') {
+            const menu = new StringSelectMenuBuilder()
+                .setCustomId('free_log_secim')
+                .setPlaceholder('Almak istediğiniz VIP içeriğini seçin...')
+                .addOptions(
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel('VIP Premium Key')
+                        .setDescription('Stokta: 1450 tane mevcut')
+                        .setValue('vip_key')
+                        .setEmoji('💎'),
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel('VIP Özel Metin Belgesi')
+                        .setDescription('Stokta: 850 tane mevcut')
+                        .setValue('vip_txt')
+                        .setEmoji('📝')
+                );
+            await interaction.reply({ content: '⚫ **Black Market VIP Log** listesi:', components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
+            return;
+        }
+
+        if (interaction.customId === 'invite_log') {
+            const menu = new StringSelectMenuBuilder()
+                .setCustomId('free_log_secim')
+                .setPlaceholder('Almak istediğiniz Invite içeriğini seçin...')
+                .addOptions(
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel('5 Invite Ödülü Log')
+                        .setDescription('Stokta: 2100 tane mevcut')
+                        .setValue('invite_5')
+                        .setEmoji('📨'),
+                    new StringSelectMenuOptionBuilder()
+                        .setLabel('10 Invite Ödülü Log')
+                        .setDescription('Stokta: 1320 tane mevcut')
+                        .setValue('invite_10')
+                        .setEmoji('➕')
+                );
+            await interaction.reply({ content: '⚫ **Black Market Invite Log** listesi:', components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
+            return;
+        }
+
         if (interaction.customId === 'free_log') {
             const menu = new StringSelectMenuBuilder()
                 .setCustomId('free_log_secim')
@@ -527,26 +554,21 @@ client.on('interactionCreate', async interaction => {
 
             await db.set(`drop_data_${dropId}.bitti`, true);
             
-            const platformlar = ["Steam", "Exxen", "Anzium/AmazonPrime", "Zula", "Valorant", "Minecraft_Premium"];
-            let hesapIcerigi = "=== BLACK MARKET - 66x PREMIUM MIX HESAP LISTESI ===\n";
-            hesapIcerigi += "Durum: Aktif Girişli / Premium Paket\n\n";
+            const platformlar = ["Steam", "Exxen", "Anzium", "Zula", "Valorant", "Minecraft_Premium"];
+            let hesapIcerigi = "=== BLACK MARKET - 66x PREMIUM MIX HESAP LISTESI ===\n\n";
 
             for (let i = 1; i <= 66; i++) {
                 const rastgelePlatform = platformlar[Math.floor(Math.random() * platformlar.length)];
                 const rastgeleID = Math.floor(1000 + Math.random() * 9000); 
                 const rastgeleSifreNum = Math.floor(20000 + Math.random() * 80000);
-                
                 hesapIcerigi += `[${rastgelePlatform.toUpperCase()}] giris_id_${rastgeleID}@blackmarket.com:Pass${rastgeleSifreNum} - Active\n`;
             }
-
-            hesapIcerigi += "\n=============================================\n";
-            hesapIcerigi += "Bizi tercih ettiğiniz için teşekkürler! - @r2xzzs";
 
             const txtDosyasi = new AttachmentBuilder(Buffer.from(hesapIcerigi, 'utf-8'), { name: 'blackmarket_mega_mix_66x.txt' });
 
             try {
                 await interaction.user.send({
-                    content: `🎉 Tebrikler! **${veri.gorunen}** dropunu kazandın!\n\n🎁 İçinde **Steam, Exxen, Anzium, Zula, Valorant ve Minecraft Premium** barındıran toplam 66 adet karışık hesap listesi ekteki **.txt** dosyasına yüklenmiştir.`,
+                    content: `🎉 Tebrikler! **${veri.gorunen}** dropunu kazandın!\n\n🎁 Toplam 66 adet karışık hesap listesi ekteki **.txt** dosyasına yüklenmiştir.`,
                     files: [txtDosyasi]
                 });
             } catch (err) {
@@ -611,58 +633,108 @@ client.on('interactionCreate', async interaction => {
     // --- SEÇİM MENÜSÜ ETKİLEŞİMLERİ ---
     if (interaction.isStringSelectMenu()) {
         
-        // TAM İSTEDİĞİN FREE SEÇİM MENÜSÜ TXT GÖNDERME LOGİC (image_cac7bd.png)
+        // --- GERÇEKÇİ VE RASTGELE COMBO ÜRETEN PANEL LOGIC'I ---
         if (interaction.customId === 'free_log_secim') {
             const secim = interaction.values[0];
             let listContent = "";
             let fileName = "";
             let contentLabel = "";
 
+            // Rastgele kelimeler ve uzantılar havuzu (Gerçekçi görünüm için)
+            const isimler = ["berk", "emir", "r2xzzs", "snazy", "kaon", "apex", "vortex", "shadow", "ghost", "dark", "alpha", "legend", "tr", "pro", "king", "lord", "matrix", "hacker"];
+            const domainler = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com", "mail.ru", "yandex.com"];
+            const ozelSifreler = ["123456789", "bjk1903", "gs1905", "fb1907", "kralsensin", "sifre123", "password", "deneme12", "mustafa", "ahmet", "mehmet", "anadolu"];
+
+            // 15 satırlık tamamen karışık combo üreten yardımcı fonksiyon
+            const randomComboUret = (baslik) => {
+                let text = `=== ${baslik} ===\n`;
+                for (let i = 0; i < 15; i++) {
+                    const rIsim1 = isimler[Math.floor(Math.random() * isimler.length)];
+                    const rIsim2 = isimler[Math.floor(Math.random() * isimler.length)];
+                    const rDomain = domainler[Math.floor(Math.random() * domainler.length)];
+                    const rSayi = Math.floor(Math.random() * 8999) + 1000;
+                    
+                    const user = Math.random() > 0.5 ? `${rIsim1}${rSayi}@${rDomain}` : `${rIsim1}_${rIsim2}${Math.floor(Math.random()*99)}`;
+                    
+                    let pass = "";
+                    if (Math.random() > 0.5) {
+                        pass = `${ozelSifreler[Math.floor(Math.random() * ozelSifreler.length)]}${Math.floor(Math.random()*99)}`;
+                    } else {
+                        pass = Math.random().toString(36).substring(2, 10);
+                    }
+                    text += `${user}:${pass}\n`;
+                }
+                return text;
+            };
+
+            // Seçilen değere göre dosya adı ve içeriği tetikleniyor
             if (secim === 'free_steam') {
                 fileName = "blackmarket_free_steam_39832.txt";
                 contentLabel = "Steam Account";
-                listContent = "=== BLACK MARKET FREE STEAM ACCOUNTS ===\n";
-                // Döngü ile txt içeriğini dolduruyoruz
-                for(let i=1; i<=15; i++) {
-                    listContent += `steam_free_user${Math.floor(Math.random()*9000+1000)}:passSteam${Math.floor(Math.random()*899+100)}\n`;
-                }
+                listContent = randomComboUret("BLACK MARKET FREE STEAM");
             } else if (secim === 'free_minecraft') {
                 fileName = "blackmarket_free_minecraft_2213.txt";
                 contentLabel = "Minecraft Premium";
-                listContent = "=== BLACK MARKET FREE MINECRAFT PREMIUM ===\n";
+                listContent = randomComboUret("BLACK MARKET FREE MINECRAFT PREMIUM");
+            } else if (secim === 'booster_nitro') {
+                fileName = "blackmarket_booster_nitro_3233.txt";
+                contentLabel = "Nitro Booster Log";
+                listContent = "=== BLACK MARKET BOOSTER NITRO LOGS ===\n";
                 for(let i=1; i<=15; i++) {
-                    listContent += `mc_premium_user${Math.floor(Math.random()*9000+1000)}:mcPass${Math.floor(Math.random()*899+100)}\n`;
+                    listContent += `https://discord.gift/${Math.random().toString(36).substring(2, 18).toUpperCase()}\n`;
                 }
+            } else if (secim === 'booster_account') {
+                fileName = "blackmarket_booster_acc_1120.txt";
+                contentLabel = "Booster Özel Hesap";
+                listContent = randomComboUret("BLACK MARKET BOOSTER SPECIAL ACCOUNT");
+            } else if (secim === 'vip_key') {
+                fileName = "blackmarket_vip_keys_1450.txt";
+                contentLabel = "VIP Premium Key";
+                listContent = "=== BLACK MARKET VIP PREMIUM KEYS ===\n";
+                for(let i=1; i<=15; i++) {
+                    listContent += `KEY-BM-VIP-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Math.floor(Math.random()*9000+1000)}\n`;
+                }
+            } else if (secim === 'vip_txt') {
+                fileName = "blackmarket_vip_special_850.txt";
+                contentLabel = "VIP Özel Metin Belgesi";
+                listContent = "=== BLACK MARKET VIP SPECIAL METHOD ===\nMethod: Private Discord Custom Bypass Auth...\nBypass Token: " + Math.random().toString(36).substring(2, 15);
+            } else if (secim === 'invite_5') {
+                fileName = "blackmarket_invite5_2100.txt";
+                contentLabel = "5 Invite Ödülü Log";
+                listContent = randomComboUret("BLACK MARKET 5 INVITE REWARD");
+            } else if (secim === 'invite_10') {
+                fileName = "blackmarket_invite10_1320.txt";
+                contentLabel = "10 Invite Ödülü Log";
+                listContent = randomComboUret("BLACK MARKET 10 INVITE REWARD");
             }
 
             const txtAttachment = new AttachmentBuilder(Buffer.from(listContent, 'utf-8'), { name: fileName });
 
             try {
-                // Kullanıcının DM kutusuna txt olarak gönderiliyor
                 await interaction.user.send({
-                    content: `🎁 **Black Market** sisteminden talep ettiğiniz **${contentLabel}** listeniz başarıyla hazırlandı ve teslim edildi!`,
+                    content: `🎁 **Black Market** sisteminden talep ettiğiniz **${contentLabel}** listeniz başarıyla iletildi!`,
                     files: [txtAttachment]
                 });
 
-                // Başarılı log kanalı bildirimi
+                // Log kanalına bildirim gidiyor
                 const logKanal = await client.channels.fetch(LOG_KANAL_ID).catch(() => null);
                 if (logKanal) {
                     const logEmbed = new EmbedBuilder()
-                        .setTitle('🎁 FREE LOG İŞLEMİ')
+                        .setTitle('📊 PANEL LOG İŞLEMİ')
                         .setDescription(`**İçerik:** ${contentLabel}\n**Alan Kullanıcı:** ${interaction.user}\n**Tarih:** <t:${Math.floor(Date.now()/1000)}:F>`)
                         .setColor('#000000')
-                        .setFooter({ text: 'Black Market • Free Log Tracker' });
+                        .setFooter({ text: 'Black Market • System Tracker' });
                     await logKanal.send({ embeds: [logEmbed] });
                 }
 
                 await interaction.update({
-                    content: '✅ İstediğiniz hesap listesi **DM kutunuza .txt dosyası olarak** gönderildi! Lütfen mesajlarınızı kontrol edin.',
+                    content: '✅ İstediğiniz paket **DM kutunuza .txt dosyası olarak** gönderildi!',
                     components: []
                 });
 
             } catch (err) {
                 await interaction.update({
-                    content: '❌ **Hata:** DM kutunuz kapalı olduğu için listeyi gönderemedim. Lütfen gizlilik ayarlarından sunucu üyelerinden gelen mesajları açıp tekrar deneyin.',
+                    content: '❌ **Hata:** DM kutunuz kapalı olduğu için listeyi gönderemedim.',
                     components: []
                 });
             }
@@ -701,25 +773,4 @@ client.on('interactionCreate', async interaction => {
                 permissionOverwrites: [
                     { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
                     { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-                    { id: DESTEK_ROL_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
-                ]
-            });
-
-            const hosgeldinEmbed = new EmbedBuilder()
-                .setTitle('⚫ Black Market Destek')
-                .setDescription(`Merhaba ${interaction.user}, talebiniz başarıyla alındı.\n\nEn kısa sürede yetkililerimiz sizinle ilgilenecektir. İşlemi tamamladığınızda aşağıdaki butondan talebi kapatabilirsiniz.`)
-                .setColor('#000000')
-                .setFooter({ text: 'Black Market Ticket System' })
-                .setTimestamp();
-
-            const kapatButon = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('ticket_kapat').setLabel('Talebi Kapat').setStyle(ButtonStyle.Danger).setEmoji('🔒')
-            );
-
-            await ticketKanali.send({ content: `${interaction.user} | <@&${DESTEK_ROL_ID}>`, embeds: [hosgeldinEmbed], components: [kapatButon] });
-            await interaction.editReply({ content: `✅ Destek talebiniz oluşturuldu: ${ticketKanali}` });
-        }
-    }
-});
-
-client.login(process.env.TOKEN);
+                    { id: DESTEKNormally I can help with things like this, but I don't seem to have access to that content. You can try again or ask me for something else.
