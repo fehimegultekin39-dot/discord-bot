@@ -27,6 +27,14 @@ const DESTEK_ROL_ID = '1520772451707916368';
 const YETKILI_ROL_ID = '1520515365786882178';
 const TICKET_KATEGORI_ID = '1520530500022960198';
 
+// --- LOG SİSTEMİ AYARLARI ---
+const LOG_KANAL_ID = '1520499241062109405';
+const ROLES = {
+    booster_log: '1520486297527910420',
+    vip_log: '1521129242094473337',
+    invite_log: '1521129473863450664'
+};
+
 function parseTurkceSure(sure) {
     return sure
         .toLowerCase()
@@ -57,6 +65,7 @@ const commands = [
         
     new SlashCommandBuilder().setName('cekilis').setDescription('Yeni çekiliş başlatır.').addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)).addIntegerOption(o => o.setName('kazanan_sayisi').setDescription('Kazanan sayısı').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)),
     new SlashCommandBuilder().setName('ticketpanel').setDescription('Destek panelini gönderir.'),
+    new SlashCommandBuilder().setName('log-panel').setDescription('SnazydiovX log panelini gönderir.'),
     
     new SlashCommandBuilder()
         .setName('vouch')
@@ -178,6 +187,31 @@ client.once('ready', async (c) => {
 
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
+        
+        // --- LOG PANEL KOMUTU ---
+        if (interaction.commandName === 'log-panel') {
+            const embed = new EmbedBuilder()
+                .setTitle('🛒 **snazydiovX - Log Sistemi**')
+                .setDescription('Aşağıdaki butonlardan istediğiniz log türünü seçin.\n\n**Tüm loglar** ilgili kanala profesyonel şekilde iletilecektir.')
+                .setColor('#0F0F0F')
+                .setThumbnail(client.user.displayAvatarURL({ dynamic: true }))
+                .setFooter({ 
+                    text: 'snazydiovX • Log Management System',
+                    iconURL: interaction.guild.iconURL({ dynamic: true }) 
+                })
+                .setTimestamp();
+
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('booster_log').setLabel('Booster Log').setStyle(ButtonStyle.Danger).setEmoji('🚀'),
+                new ButtonBuilder().setCustomId('vip_log').setLabel('VIP Log').setStyle(ButtonStyle.Secondary).setEmoji('💎'),
+                new ButtonBuilder().setCustomId('invite_log').setLabel('Invite Log').setStyle(ButtonStyle.Success).setEmoji('📨'),
+                new ButtonBuilder().setCustomId('free_log').setLabel('Free Log').setStyle(ButtonStyle.Primary).setEmoji('🎁')
+            );
+
+            await interaction.reply({ embeds: [embed], components: [row] });
+        }
+
+        // --- TICKET PANEL KOMUTU ---
         if (interaction.commandName === 'ticketpanel') {
             const row = new ActionRowBuilder().addComponents(
                 new StringSelectMenuBuilder()
@@ -204,6 +238,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
+        // --- VOUCH KOMUTU ---
         if (interaction.commandName === 'vouch') {
             const yetkili = interaction.options.getUser('veren');
             const alanUye = interaction.options.getUser('alan');
@@ -239,6 +274,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
+        // --- YETKİLİ PUAN KOMUTU ---
         if (interaction.commandName === 'yetkilipuan') {
             const hedef = interaction.options.getUser('kullanici') || interaction.user;
             const vSayi = await db.get(`vouch_${hedef.id}`) || 0;
@@ -256,6 +292,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
+        // --- DROP KOMUTU ---
         if (interaction.commandName === 'drop') {
             const gorunenOdul = interaction.options.getString('gorunen');
             const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
@@ -288,6 +325,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
         }
 
+        // --- ÇEKİLİŞ KOMUTU ---
         if (interaction.commandName === 'cekilis') {
             const durInput = interaction.options.getString('sure');
             const count = interaction.options.getInteger('kazanan_sayisi');
@@ -341,6 +379,7 @@ client.on('interactionCreate', async interaction => {
             }, msDur);
         }
 
+        // --- LEGIT KOMUTU ---
         if (interaction.commandName === 'legit') {
             const image = interaction.options.getAttachment('image');
             const odul = interaction.options.getString('odul');
@@ -368,6 +407,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
+        // --- ANKET KOMUTU ---
         if (interaction.commandName === 'anket') {
             const soru = interaction.options.getString('soru');
 
@@ -386,6 +426,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
+        // --- MODERASYON KOMUTLARI ---
         if (['ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: 'Yetkin yok!', ephemeral: true });
             
@@ -425,6 +466,38 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.isButton()) {
+        
+        // --- LOG SİSTEMİ BUTON ETKİLEŞİMLERİ ---
+        if (['booster_log', 'vip_log', 'invite_log', 'free_log'].includes(interaction.customId)) {
+            const logKanal = await client.channels.fetch(LOG_KANAL_ID).catch(() => null);
+            if (!logKanal) return interaction.reply({ content: '❌ Log kanalı bulunamadı!', ephemeral: true });
+
+            let title = '', emoji = '', color = '#000000';
+            switch (interaction.customId) {
+                case 'booster_log': title = '🚀 BOOSTER İŞLEMİ'; emoji = '🚀'; color = '#FF0000'; break;
+                case 'vip_log':     title = '💎 VIP İŞLEMİ';     emoji = '💎'; color = '#00FFFF'; break;
+                case 'invite_log':  title = '📨 İNVİTE İŞLEMİ';  emoji = '📨'; color = '#00FF00'; break;
+                case 'free_log':    title = '🎁 FREE İŞLEMİ';    emoji = '🎁'; color = '#FFD700'; break;
+            }
+
+            const logEmbed = new EmbedBuilder()
+                .setTitle(title)
+                .setDescription(`**İşlem Türü:** ${emoji} ${interaction.customId.replace('_log', '').toUpperCase()}\n**Yetkili:** ${interaction.user}\n**Tarih:** <t:${Math.floor(Date.now()/1000)}:F>`)
+                .setColor(color)
+                .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
+                .setFooter({ text: `snazydiovX • Log ID: ${Date.now()}`, iconURL: client.user.displayAvatarURL() })
+                .setTimestamp();
+
+            await logKanal.send({ embeds: [logEmbed] });
+
+            await interaction.reply({
+                embeds: [new EmbedBuilder().setDescription(`✅ **${emoji} ${title}** log kanalına gönderildi!`).setColor(color)],
+                ephemeral: true
+            });
+            return;
+        }
+
+        // --- DROP BUTONU ---
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const veri = await db.get(`drop_data_${dropId}`);
@@ -449,6 +522,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.channel.send(`🎉 ${interaction.user}, hızlı davrandı ve **${veri.gorunen}** ödülünü kaptı!`);
         }
 
+        // --- ÇEKİLİŞ REROLL BUTONU ---
         if (interaction.customId.startsWith('cekilis_reroll_')) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
                 return interaction.reply({ content: 'Sadece yetkililer çekilişi yeniden çekebilir.', ephemeral: true });
@@ -458,6 +532,7 @@ client.on('interactionCreate', async interaction => {
             await cekilisBitir(interaction.channel.id, msgId);
         }
 
+        // --- ANKET BUTONLARI ---
         if (['anket_evet', 'anket_hayir'].includes(interaction.customId)) {
             const msgId = interaction.message.id;
             const userVoted = await db.get(`anket_oy_${msgId}_${interaction.user.id}`);
@@ -484,6 +559,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.update({ components: [row] });
         }
 
+        // --- TICKET KAPATMA BUTONU ---
         if (interaction.customId === 'ticket_kapat') {
             await interaction.reply({ content: 'Bu destek talebi 5 saniye içinde kapatılıyor...' });
             setTimeout(() => {
@@ -519,7 +595,6 @@ client.on('interactionCreate', async interaction => {
             }
 
             try {
-                // İlk aşama: Kanalı sadece talep açan üye ve botun görebileceği şekilde güvenle oluşturuyoruz
                 const ticketKanali = await interaction.guild.channels.create({
                     name: kanalIsmi,
                     type: ChannelType.GuildText,
@@ -536,7 +611,6 @@ client.on('interactionCreate', async interaction => {
                     ],
                 });
 
-                // İkinci aşama: Yetkili rollerini eklemeyi deniyoruz (Botun yetkisi yetmezse bile kod hata verip çökmeyecek)
                 try {
                     await ticketKanali.permissionOverwrites.edit(DESTEK_ROL_ID, {
                         ViewChannel: true,
@@ -575,9 +649,7 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// Kodun en altına inin ve client.login kısmını şu şekilde değiştirin:
 client.login(process.env.TOKEN).catch(err => {
     console.error("TOKEN HATASI: Bot giriş yapamadı! TOKEN'i kontrol et.", err);
-    process.exit(1); // Hata durumunda net bir çıkış kodu ver
+    process.exit(1);
 });
-
