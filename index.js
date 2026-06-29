@@ -575,4 +575,9 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-client.login(process.env.TOKEN);
+// Kodun en altına inin ve client.login kısmını şu şekilde değiştirin:
+client.login(process.env.TOKEN).catch(err => {
+    console.error("TOKEN HATASI: Bot giriş yapamadı! TOKEN'i kontrol et.", err);
+    process.exit(1); // Hata durumunda net bir çıkış kodu ver
+});
+
