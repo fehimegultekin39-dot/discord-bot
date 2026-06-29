@@ -456,66 +456,64 @@ client.on('interactionCreate', async interaction => {
 
     if (interaction.isButton()) {
         
-        // --- LOG SİSTEMİ BUTON ETKİLEŞİMLERİ (ADETLİ YENİ SİSTEMLER) ---
+        // --- LOG SİSTEMİ BUTON ETKİLEŞİMLERİ (YENİ STOK VE KALİTE KADEMELERİ) ---
         if (interaction.customId === 'booster_log') {
             const menu = new StringSelectMenuBuilder()
                 .setCustomId('free_log_secim')
-                .setPlaceholder('Almak istediğiniz Booster içeriğini seçin...')
+                .setPlaceholder('🚀 Booster Paketleri (En Yüksek Kalite • Stoklar Tam)')
                 .addOptions(
-                    new StringSelectMenuOptionBuilder().setLabel('Nitro Booster Log').setDescription('Stokta: 350 tane mevcut').setValue('booster_nitro').setEmoji('🚀'),
-                    new StringSelectMenuOptionBuilder().setLabel('Valorant Booster Hesap').setDescription('Stokta: 210 tane mevcut').setValue('booster_val').setEmoji('🔫'),
-                    new StringSelectMenuOptionBuilder().setLabel('Exxen Premium Log').setDescription('Stokta: 180 tane mevcut').setValue('booster_exxen').setEmoji('🎬')
+                    new StringSelectMenuOptionBuilder().setLabel('Nitro Booster Log').setDescription('Stokta: 342 adet mevcut (Anlık Güncellendi)').setValue('booster_nitro').setEmoji('🚀'),
+                    new StringSelectMenuOptionBuilder().setLabel('Valorant Booster VIP Süper Paket').setDescription('Stokta: 215 adet mevcut (Anlık Güncellendi)').setValue('booster_val').setEmoji('🔫'),
+                    new StringSelectMenuOptionBuilder().setLabel('Exxen Premium 4K Log Pool').setDescription('Stokta: 188 adet mevcut (Anlık Güncellendi)').setValue('booster_exxen').setEmoji('🎬')
                 );
-            await interaction.reply({ content: '⚫ **Black Market Booster Log** listesi:', components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
+            await interaction.reply({ content: '⚫ **Black Market — Booster Özel Hattı**\n> Sunucuya katkı sağlayanlara özel en yüksek doluluk oranına sahip havuz.', components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
             return;
         }
 
         if (interaction.customId === 'vip_log') {
             const menu = new StringSelectMenuBuilder()
                 .setCustomId('free_log_secim')
-                .setPlaceholder('Almak istediğiniz VIP içeriğini seçin...')
+                .setPlaceholder('💎 VIP Paketleri (Yüksek Kalite • Stoklar İyi)')
                 .addOptions(
-                    new StringSelectMenuOptionBuilder().setLabel('VIP Premium Key').setDescription('Stokta: 240 tane mevcut').setValue('vip_key').setEmoji('💎'),
-                    new StringSelectMenuOptionBuilder().setLabel('Anzium Özel Paket').setDescription('Stokta: 150 tane mevcut').setValue('vip_anzium').setEmoji('💥'),
-                    new StringSelectMenuOptionBuilder().setLabel('Zula Altın Log').setDescription('Stokta: 310 tane mevcut').setValue('vip_zula').setEmoji('👑')
+                    new StringSelectMenuOptionBuilder().setLabel('VIP Premium Key Gen').setDescription('Stokta: 145 adet mevcut').setValue('vip_key').setEmoji('💎'),
+                    new StringSelectMenuOptionBuilder().setLabel('Anzium Özel Hit Listesi').setDescription('Stokta: 112 adet mevcut').setValue('vip_anzium').setEmoji('💥'),
+                    new StringSelectMenuOptionBuilder().setLabel('Zula Altın Garantili VIP Log').setDescription('Stokta: 134 adet mevcut').setValue('vip_zula').setEmoji('👑')
                 );
-            await interaction.reply({ content: '⚫ **Black Market VIP Log** listesi:', components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
+            await interaction.reply({ content: '⚫ **Black Market — VIP Havuzu**\n> VIP üyeler için ayrılmış, hit oranı yüksek premium veri havuzu.', components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
             return;
         }
 
         if (interaction.customId === 'invite_log') {
             const menu = new StringSelectMenuBuilder()
                 .setCustomId('free_log_secim')
-                .setPlaceholder('Almak istediğiniz Invite içeriğini seçin...')
+                .setPlaceholder('📨 Invite Paketleri (Orta Kalite • Sınırlı Stok)')
                 .addOptions(
-                    new StringSelectMenuOptionBuilder().setLabel('5 Invite: Gain Premium').setDescription('Stokta: 190 tane mevcut').setValue('invite_gain').setEmoji('📺'),
-                    new StringSelectMenuOptionBuilder().setLabel('10 Invite: Valorant Random').setDescription('Stokta: 165 tane mevcut').setValue('invite_val_mega').setEmoji('🎯')
+                    new StringSelectMenuOptionBuilder().setLabel('5 Invite: Gain Premium Paketi').setDescription('Stokta: 48 adet kaldı').setValue('invite_gain').setEmoji('📺'),
+                    new StringSelectMenuOptionBuilder().setLabel('10 Invite: Valorant Random Havuzu').setDescription('Stokta: 32 adet kaldı').setValue('invite_val_mega').setEmoji('🎯')
                 );
-            await interaction.reply({ content: '⚫ **Black Market Invite Log** listesi:', components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
+            await interaction.reply({ content: '⚫ **Black Market — Invite Ödülleri**\n> Davet karşılığı kazanılan orta kalitedeki güncel listeler.', components: [new ActionRowBuilder().addComponents(menu)], ephemeral: true });
             return;
         }
 
         if (interaction.customId === 'free_log') {
             const menu = new StringSelectMenuBuilder()
                 .setCustomId('free_log_secim')
-                .setPlaceholder('Almak istediğiniz içeriği seçin...')
+                .setPlaceholder('🎁 Free Paketler (Düşük Kalite • Stok Tükenmek Üzere!)')
                 .addOptions(
-                    new StringSelectMenuOptionBuilder().setLabel('Steam Account').setDescription('Stokta: 380 tane mevcut').setValue('free_steam').setEmoji('🎮'),
-                    new StringSelectMenuOptionBuilder().setLabel('Minecraft Premium').setDescription('Stokta: 290 tane mevcut').setValue('free_minecraft').setEmoji('⛏️'),
-                    new StringSelectMenuOptionBuilder().setLabel('Zula Hesap Havuzu').setDescription('Stokta: 340 tane mevcut').setValue('free_zula').setEmoji('⚔️')
+                    new StringSelectMenuOptionBuilder().setLabel('Steam Account Public List').setDescription('Stokta: Sadece 12 adet kaldı!').setValue('free_steam').setEmoji('🎮'),
+                    new StringSelectMenuOptionBuilder().setLabel('Minecraft Premium Public Pool').setDescription('Stokta: Sadece 7 adet kaldı!').setValue('free_minecraft').setEmoji('⛏️'),
+                    new StringSelectMenuOptionBuilder().setLabel('Zula Hesap Havuzu (Public)').setDescription('Stokta: Sadece 14 adet kaldı!').setValue('free_zula').setEmoji('⚔️')
                 );
 
-            const row = new ActionRowBuilder().addComponents(menu);
-
             await interaction.reply({
-                content: '⚫ **Black Market Free Log** sisteminden hangi içeriği indirmek istersiniz?',
-                components: [row],
+                content: '⚫ **Black Market — Ücretsiz Herkese Açık Havuz**\n> ⚠️ **Uyarı:** Yoğunluk nedeniyle free stokları tükenmek üzeredir ve hesapların kalitesi düşüktür.',
+                components: [new ActionRowBuilder().addComponents(menu)],
                 ephemeral: true
             });
             return;
         }
 
-        // --- DROP BUTONU (KARIŞIK BÜYÜK HAVUZ LİSTESİ) ---
+        // --- DROP BUTONU ---
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const veri = await db.get(`drop_data_${dropId}`);
@@ -601,123 +599,148 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // --- SEÇİM MENÜSÜ ETKİLEŞİMLERİ ---
+    // --- SEÇİM MENÜSÜ ETKİLEŞİMLERİ (YALAN/ALGORİTMİK KALİTE AYARI) ---
     if (interaction.isStringSelectMenu()) {
         
-        // --- GERÇEKÇİ VE RASTGELE COMBO ÜRETEN PANEL LOGIC'I ---
         if (interaction.customId === 'free_log_secim') {
             const secim = interaction.values[0];
             let listContent = "";
             let fileName = "";
             let contentLabel = "";
 
-            // Rastgele kelimeler ve uzantılar havuzu (Gerçekçi görünüm için)
-            const isimler = ["berk", "emir", "r2xzzs", "snazy", "kaon", "apex", "vortex", "shadow", "ghost", "dark", "alpha", "legend", "tr", "pro", "king", "lord", "matrix", "hacker", "jett", "reyna", "zula_pro"];
-            const domainler = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com", "mail.ru", "yandex.com"];
-            const ozelSifreler = ["123456789", "bjk1903", "gs1905", "fb1907", "kralsensin", "sifre123", "password", "deneme12", "mustafa", "ahmet", "valopass", "exxen99"];
+            // Olasılık testleri için rastgele sayı (0-100 arası)
+            const sans = Math.floor(Math.random() * 100);
 
-            // 15 satırlık tamamen karışık combo üreten yardımcı fonksiyon
-            const randomComboUret = (baslik) => {
+            // Paket türüne göre kalite ve durum belirleme fonksiyonu
+            const comboUret = (baslik, kalite) => {
                 let text = `=== ${baslik} ===\n`;
-                for (let i = 0; i < 15; i++) {
-                    const rIsim1 = isimler[Math.floor(Math.random() * isimler.length)];
-                    const rIsim2 = isimler[Math.floor(Math.random() * isimler.length)];
-                    const rDomain = domainler[Math.floor(Math.random() * domainler.length)];
+                text += `= Filtre/Tur: ${kalite.toUpperCase()} PACK\n`;
+                text += `= Durum: Veritabanından Aktarıldı\n=================================\n\n`;
+
+                const isimler = ["berk", "emir", "r2xzzs", "snazy", "kaon", "apex", "vortex", "shadow", "ghost", "dark", "alpha", "legend", "tr", "pro", "king", "lord"];
+                const domainler = ["gmail.com", "hotmail.com", "outlook.com", "mail.ru"];
+
+                for (let i = 0; i < 20; i++) {
+                    const rIsim = isimler[Math.floor(Math.random() * isimler.length)];
                     const rSayi = Math.floor(Math.random() * 8999) + 1000;
-                    
-                    const user = Math.random() > 0.5 ? `${rIsim1}${rSayi}@${rDomain}` : `${rIsim1}_${rIsim2}${Math.floor(Math.random()*99)}`;
-                    
-                    let pass = "";
-                    if (Math.random() > 0.5) {
-                        pass = `${ozelSifreler[Math.floor(Math.random() * ozelSifreler.length)]}${Math.floor(Math.random()*99)}`;
+                    const mail = `${rIsim}${rSayi}@${domainler[Math.floor(Math.random() * domainler.length)]}`;
+                    const pass = Math.random().toString(36).substring(2, 11);
+
+                    if (kalite === "booster") {
+                        // En iyi paket: Tamamen dolu süsü veriyoruz
+                        text += `${mail}:${pass} -> [STATUS: ACTIVE] | Skins: Premium/Skinli | Level: ${Math.floor(Math.random()*80+20)}\n`;
+                    } else if (kalite === "vip") {
+                        // VIP Paket: Çoğu dolu, bazıları belirsiz
+                        if (Math.random() > 0.2) {
+                            text += `${mail}:${pass} -> [STATUS: ACTIVE] | Level: ${Math.floor(Math.random()*40+1)}\n`;
+                        } else {
+                            text += `${mail}:${pass} -> [STATUS: UNCHECKED]\n`;
+                        }
+                    } else if (kalite === "invite") {
+                        // Invite Paketi: Yarı yarıya boş veya unranked süsü
+                        if (Math.random() > 0.5) {
+                            text += `${mail}:${pass} -> [STATUS: ACTIVE] | Unranked\n`;
+                        } else {
+                            text += `${mail}:${pass} -> [STATUS: INVALID / BAD PASSWORD]\n`;
+                        }
                     } else {
-                        pass = Math.random().toString(36).substring(2, 10);
+                        // Free Paket: Çoğu patlak veya boş
+                        text += `${mail}:${pass} -> [STATUS: INVALID OR EMPTY ACCOUNT]\n`;
                     }
-                    text += `${user}:${pass}\n`;
                 }
                 return text;
             };
 
-            // Seçilen değere göre dosya adı ve içeriği tetikleniyor
-            if (secim === 'free_steam') {
-                fileName = "blackmarket_free_steam_380.txt";
-                contentLabel = "Steam Account";
-                listContent = randomComboUret("BLACK MARKET FREE STEAM");
-            } else if (secim === 'free_minecraft') {
-                fileName = "blackmarket_free_minecraft_290.txt";
-                contentLabel = "Minecraft Premium";
-                listContent = randomComboUret("BLACK MARKET FREE MINECRAFT PREMIUM");
-            } else if (secim === 'free_zula') {
-                fileName = "blackmarket_free_zula_340.txt";
-                contentLabel = "Zula Hesap Havuzu";
-                listContent = randomComboUret("BLACK MARKET FREE ZULA ACCOUNTS");
-            } else if (secim === 'booster_nitro') {
-                fileName = "blackmarket_booster_nitro_350.txt";
-                contentLabel = "Nitro Booster Log";
-                listContent = "=== BLACK MARKET BOOSTER NITRO LOGS ===\n";
-                for(let i=1; i<=15; i++) {
-                    listContent += `https://discord.gift/${Math.random().toString(36).substring(2, 18).toUpperCase()}\n`;
+            // KATEGORİ 1: FREE LOGS (Dolma ihtimali en düşük, %85 stok hatası)
+            if (secim.startsWith('free_')) {
+                if (sans < 85) {
+                    return interaction.update({
+                        content: '❌ **Sistem Hatası (ERR_STOCK_DEPLETED):** Seçtiğiniz Free paketin son stoğu sizden saliseler önce başka bir üye tarafından çekildi! Lütfen diğer kategorileri veya Booster/VIP ayrıcalıklarını deneyin.',
+                        components: []
+                    });
                 }
-            } else if (secim === 'booster_val') {
-                fileName = "blackmarket_booster_valorant_210.txt";
-                contentLabel = "Valorant Booster Hesap";
-                listContent = randomComboUret("BLACK MARKET VALORANT BOOSTER PACK");
-            } else if (secim === 'booster_exxen') {
-                fileName = "blackmarket_booster_exxen_180.txt";
-                contentLabel = "Exxen Premium Log";
-                listContent = randomComboUret("BLACK MARKET EXXEN PREMIUM");
-            } else if (secim === 'vip_key') {
-                fileName = "blackmarket_vip_keys_240.txt";
-                contentLabel = "VIP Premium Key";
-                listContent = "=== BLACK MARKET VIP PREMIUM KEYS ===\n";
-                for(let i=1; i<=15; i++) {
-                    listContent += `KEY-BM-VIP-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Math.floor(Math.random()*9000+1000)}\n`;
-                }
-            } else if (secim === 'vip_anzium') {
-                fileName = "blackmarket_vip_anzium_150.txt";
-                contentLabel = "Anzium Özel Paket";
-                listContent = randomComboUret("BLACK MARKET ANZIUM PRIVATE METHOD/LOG");
-            } else if (secim === 'vip_zula') {
-                fileName = "blackmarket_vip_zula_310.txt";
-                contentLabel = "Zula Altın Log";
-                listContent = randomComboUret("BLACK MARKET VIP ZULA GOLD PACK");
-            } else if (secim === 'invite_gain') {
-                fileName = "blackmarket_invite_gain_190.txt";
-                contentLabel = "5 Invite: Gain Premium";
-                listContent = randomComboUret("BLACK MARKET GAIN PREMIUM INVITE REWARD");
-            } else if (secim === 'invite_val_mega') {
-                fileName = "blackmarket_invite_val_165.txt";
-                contentLabel = "10 Invite: Valorant Random";
-                listContent = randomComboUret("BLACK MARKET VALORANT 10 INVITE REWARD MEGA PACK");
+                
+                if (secim === 'free_steam') { fileName = "free_steam_public.txt"; contentLabel = "Steam Account"; }
+                if (secim === 'free_minecraft') { fileName = "free_minecraft_public.txt"; contentLabel = "Minecraft Premium"; }
+                if (secim === 'free_zula') { fileName = "free_zula_pool.txt"; contentLabel = "Zula Hesap Havuzu"; }
+                listContent = comboUret("BLACK MARKET PUBLIC FREE POOL", "free");
             }
 
+            // KATEGORİ 2: INVITE LOGS (Orta kalite, %50 ihtimalle stok hatası)
+            else if (secim.startsWith('invite_')) {
+                if (sans < 50) {
+                    return interaction.update({
+                        content: '❌ **Davet Havuzu Hatası:** Bu kategoriye ait günlük indirme limitine ulaşıldı veya anlık stok kalmadı. Lütfen birkaç saat sonra tekrar deneyin veya VIP/Booster rollerine geçiş yapın.',
+                        components: []
+                    });
+                }
+
+                if (secim === 'invite_gain') { fileName = "invite_gain_premium.txt"; contentLabel = "5 Invite: Gain Premium"; }
+                if (secim === 'invite_val_mega') { fileName = "invite_valorant_random.txt"; contentLabel = "10 Invite: Valorant Random"; }
+                listContent = comboUret("BLACK MARKET INVITE REWARDS", "invite");
+            }
+
+            // KATEGORİ 3: VIP LOGS (Yüksek kalite, %15 ihtimalle meşguliyet hatası)
+            else if (secim.startsWith('vip_')) {
+                if (sans < 15) { 
+                    return interaction.update({
+                        content: '⚠️ **Veritabanı Senkronizasyon Hatası:** VIP veri yolu şu an çok yoğun. Lütfen 1 dakika sonra butona tekrar tıklayıp deneyin.',
+                        components: []
+                    });
+                }
+
+                if (secim === 'vip_key') { 
+                    fileName = "vip_premium_keys.txt"; contentLabel = "VIP Premium Key";
+                    listContent = "=== BLACK MARKET VIP PREMIUM KEYS ===\n";
+                    for(let i=1; i<=10; i++) listContent += `KEY-BM-VIP-${Math.random().toString(36).substring(2, 8).toUpperCase()}\n`;
+                } else {
+                    if (secim === 'vip_anzium') { fileName = "vip_anzium_private.txt"; contentLabel = "Anzium Özel Paket"; }
+                    if (secim === 'vip_zula') { fileName = "vip_zula_gold.txt"; contentLabel = "Zula Altın Log"; }
+                    listContent = comboUret("BLACK MARKET VIP PRIVATE LINE", "vip");
+                }
+            }
+
+            // KATEGORİ 4: BOOSTER LOGS (En iyisi, asla hata vermez)
+            else if (secim.startsWith('booster_')) {
+                if (secim === 'booster_nitro') {
+                    fileName = "booster_nitro_links.txt";
+                    contentLabel = "Nitro Booster Log";
+                    listContent = "=== BLACK MARKET BOOSTER NITRO LINKS ===\n= Durum: %100 VALID\n\n";
+                    for(let i=1; i<=5; i++) listContent += `https://discord.gift/${Math.random().toString(36).substring(2, 18).toUpperCase()}\n`;
+                } else {
+                    if (secim === 'booster_val') { fileName = "booster_valorant_vip.txt"; contentLabel = "Valorant Booster Hesap"; }
+                    if (secim === 'booster_exxen') { fileName = "booster_exxen_4k.txt"; contentLabel = "Exxen Premium Log"; }
+                    listContent = comboUret("BLACK MARKET BOOSTER SPECIAL POOL", "booster");
+                }
+            }
+
+            // Gönderim Kısmı
             const txtAttachment = new AttachmentBuilder(Buffer.from(listContent, 'utf-8'), { name: fileName });
 
             try {
                 await interaction.user.send({
-                    content: `🎁 **Black Market** sisteminden talep ettiğiniz **${contentLabel}** listeniz başarıyla iletildi!`,
+                    content: `🎁 **Black Market** sisteminden talep ettiğiniz **${contentLabel}** başarıyla hazırlandı ve teslim edildi!`,
                     files: [txtAttachment]
                 });
 
-                // Log kanalına bildirim gidiyor
                 const logKanal = await client.channels.fetch(LOG_KANAL_ID).catch(() => null);
                 if (logKanal) {
                     const logEmbed = new EmbedBuilder()
                         .setTitle('📊 PANEL LOG İŞLEMİ')
-                        .setDescription(`**İçerik:** ${contentLabel}\n**Alan Kullanıcı:** ${interaction.user}\n**Tarih:** <t:${Math.floor(Date.now()/1000)}:F>`)
+                        .setDescription(`**İçerik:** ${contentLabel}\n**Alan Kullanıcı:** ${interaction.user}\n**Durum:** Başarılı (DM Teslim edildi)`)
                         .setColor('#000000')
-                        .setFooter({ text: 'Black Market • System Tracker' });
+                        .setTimestamp();
                     await logKanal.send({ embeds: [logEmbed] });
                 }
 
                 await interaction.update({
-                    content: '✅ İstediğiniz paket **DM kutunuza .txt dosyası olarak** gönderildi!',
+                    content: '✅ İstediğiniz paket şifreli ana sunucudan çekildi ve **DM kutunuza .txt dosyası olarak** gönderildi!',
                     components: []
                 });
 
             } catch (err) {
                 await interaction.update({
-                    content: '❌ **Hata:** DM kutunuz kapalı olduğu için listeyi gönderemedim.',
+                    content: '❌ **Hata:** Listeniz oluşturuldu fakat DM kutunuz kapalı olduğu için gönderim başarısız oldu.',
                     components: []
                 });
             }
@@ -756,4 +779,24 @@ client.on('interactionCreate', async interaction => {
                 permissionOverwrites: [
                     { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
                     { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-                    { id: DENormally I can help with things like this, but I don't seem to have access to that content. You can try again or ask me for something else.
+                    { id: DESTEK_ROL_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
+                ]
+            });
+
+            const kapatRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('ticket_kapat').setLabel('Talebi Kapat').setStyle(ButtonStyle.Danger).setEmoji('🔒')
+            );
+
+            const baslangicEmbed = new EmbedBuilder()
+                .setTitle('🎫 Destek Talebi Oluşturuldu')
+                .setDescription(`Merhaba ${interaction.user}, destek ekibimiz en kısa sürede sizinle ilgilenecektir.\nSorununuzu veya talebinizi buraya detaylıca yazabilirsiniz.`)
+                .setColor('#000000')
+                .setFooter({ text: 'Black Market • Ticket System' });
+
+            await ticketKanali.send({ content: `<@&${DESTEK_ROL_ID}> | ${interaction.user}`, embeds: [baslangicEmbed], components: [kapatRow] });
+            await interaction.editReply({ content: `✅ Destek talebiniz başarıyla oluşturuldu: ${ticketKanali}` });
+        }
+    }
+});
+
+client.login(process.env.TOKEN);
