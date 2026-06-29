@@ -12,7 +12,7 @@ const {
     StringSelectMenuBuilder,
     ChannelType,
     PermissionFlagsBits,
-    AttachmentBuilder // TXT dosyası göndermek için eklendi
+    AttachmentBuilder
 } = require('discord.js');
 const { QuickDB } = require('quick.db');
 const db = new QuickDB();
@@ -60,8 +60,8 @@ const client = new Client({
 const commands = [
     new SlashCommandBuilder()
         .setName('drop')
-        .setDescription('66 Adet Steam hesaplı otomatik drop başlatır.')
-        .addStringOption(o => o.setName('gorunen').setDescription('Kanala yansıyacak ödül ismi (Örn: 66x Steam Premium Hesap)').setRequired(true)),
+        .setDescription('Karışık oyun/platform hesaplı otomatik büyük drop başlatır.')
+        .addStringOption(o => o.setName('gorunen').setDescription('Kanala yansıyacak ödül ismi (Örn: 66x Karışık Premium Hesap Mega Paket)').setRequired(true)),
         
     new SlashCommandBuilder().setName('cekilis').setDescription('Yeni çekiliş başlatır.').addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)).addIntegerOption(o => o.setName('kazanan_sayisi').setDescription('Kazanan sayısı').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)),
     new SlashCommandBuilder().setName('ticketpanel').setDescription('Destek panelini gönderir.'),
@@ -292,7 +292,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
-        // --- DROP KOMUTU (GÜNCELLENDİ) ---
+        // --- DROP KOMUTU ---
         if (interaction.commandName === 'drop') {
             const gorunenOdul = interaction.options.getString('gorunen');
             const dropId = Date.now();
@@ -314,7 +314,7 @@ client.on('interactionCreate', async interaction => {
             
             const baslangicEmbed = new EmbedBuilder()
                 .setTitle('🎉 DROP ZONE TR DROP!')
-                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve 66 Adet Steam Hesabı içeren TXT dosyası anında DM kutusuna gönderilir!*`)
+                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve 66 Adet Karışık Premium Hesap (Steam, Exxen, Valorant, Zula, MC vb.) içeren TXT listesi anında DM kutusuna gönderilir!*`)
                 .setColor('#8A2BE2')
                 .setFooter({ text: `Drop Zone TR • Başlatan: @${interaction.user.username}` })
                 .setTimestamp();
@@ -494,7 +494,7 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        // --- DROP BUTONU (HESAP LİSTESİ BURADA OLUŞTURULUYOR) ---
+        // --- DROP BUTONU (KARIŞIK BÜYÜK HAVUZ LİSTESİ) ---
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const veri = await db.get(`drop_data_${dropId}`);
@@ -504,31 +504,45 @@ client.on('interactionCreate', async interaction => {
 
             await db.set(`drop_data_${dropId}.bitti`, true);
             
-            // Buraya 66 adet rastgele örnek Steam hesabı ekledim. Bunları kendi gerçek hesaplarınla değiştirebilirsin.
-            let hesapIcerigi = "";
-            for(let i = 1; i <= 66; i++) {
-                hesapIcerigi += `Hesap_${i}_KullaniciAdi:Sifre1234 - [Steam Premium Account]\n`;
+            // Havuzu zenginleştirmek için farklı platform türleri tanımlıyoruz
+            const platformlar = ["Steam", "Exxen", "Anzium/AmazonPrime", "Zula", "Valorant", "Minecraft_Premium"];
+            let hesapIcerigi = "=== DROP ZONE TR - 66x PREMIUM MIX HESAP LISTESI ===\n";
+            hesapIcerigi += "Durum: Aktif Girişli / Premium Paket\n\n";
+
+            // Toplam 66 adet gerçekçi hesap ID'leri ve şifreleri üretiliyor
+            for (let i = 1; i <= 66; i++) {
+                // Rastgele platform seç
+                const rastgelePlatform = platformlar[Math.floor(Math.random() * platformlar.length)];
+                
+                // İstediğin tarzda gerçekçi görünen id numarası ve rastgele şifre kombinasyonu
+                const rastgeleID = Math.floor(1000 + Math.random() * 9000); 
+                const rastgeleSifreNum = Math.floor(20000 + Math.random() * 80000);
+                
+                hesapIcerigi += `[${rastgelePlatform.toUpperCase()}] giris_id_${rastgeleID}@dropzone.com:Pass${rastgeleSifreNum} - Active\n`;
             }
 
-            // İçeriği buffer formatında .txt dosyasına dönüştürüyoruz
-            const txtDosyası = new AttachmentBuilder(Buffer.from(hesapIcerigi, 'utf-8'), { name: 'steam_hesaplari_66x.txt' });
+            hesapIcerigi += "\n=============================================\n";
+            hesapIcerigi += "Bizi tercih ettiginiz icin tesekkurler! - @r2xzzs";
+
+            // Buffer kullanarak metni anlık olarak bir .txt belgesine çeviriyoruz
+            const txtDosyasi = new AttachmentBuilder(Buffer.from(hesapIcerigi, 'utf-8'), { name: 'dropzone_mega_mix_66x.txt' });
 
             try {
                 await interaction.user.send({
-                    content: `🎉 Tebrikler! **${veri.gorunen}** dropunu kazandın!\n🎁 Toplam 66 Adet Steam hesabı aşağıda bulunan **.txt** dosyasının içindedir. Bilgisayarına veya telefonuna indirerek kullanabilirsin!`,
-                    files: [txtDosyası]
+                    content: `🎉 Tebrikler! **${veri.gorunen}** dropunu kazandın!\n\n🎁 İçinde **Steam, Exxen, Anzium, Zula, Valorant ve Minecraft Premium** barındıran toplam 66 adet karışık hesap listesi ekteki **.txt** dosyasına yüklenmiştir. Dosyayı indirip hesapları kontrol edebilirsin!`,
+                    files: [txtDosyasi]
                 });
             } catch (err) {
-                return interaction.reply({ content: 'Ödülü kazandın fakat DM kutun kapalı olduğu için sana .txt dosyasını iletemedim! Lütfen DM kutunu açıp yetkililere ulaş.', ephemeral: true });
+                return interaction.reply({ content: 'Ödülü kazandın fakat DM kutun kapalı olduğu için .txt listesini gönderemedim! Lütfen DM kutunu açıp yetkililere ulaş.', ephemeral: true });
             }
 
             const embed = interaction.message.embeds[0];
             const guncellenmisEmbed = EmbedBuilder.from(embed)
-                .setDescription(`**Ödül:** \`${veri.gorunen}\`\n\n🎉 **Bu drop ${interaction.user} tarafından kapıldı ve 66 Hesap DM kutusuna gönderildi!**`)
+                .setDescription(`**Ödül:** \`${veri.gorunen}\`\n\n🎉 **Bu mega drop ${interaction.user} tarafından kapıldı! 66 adet karışık oyun/platform hesabı (.txt) DM kutusuna teslim edildi.**`)
                 .setColor('#00FF00');
             
             await interaction.update({ embeds: [guncellenmisEmbed], components: [] });
-            await interaction.channel.send(`🎉 ${interaction.user}, harika bir hızla butona bastı ve **${veri.gorunen}** dropunun sahibi oldu! 66 adet hesabı teslim aldı.`);
+            await interaction.channel.send(`🎉 Hız fırtınası! ${interaction.user}, butona ilk basan kişi olarak **${veri.gorunen}** karışık mega paketini kaptı! 66 adet hesabı dosya olarak teslim aldı.`);
         }
 
         // --- ÇEKİLİŞ REROLL BUTONU ---
