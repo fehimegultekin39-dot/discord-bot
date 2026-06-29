@@ -85,9 +85,9 @@ const commands = [
     new SlashCommandBuilder().setName('anket').setDescription('Gelişmiş butonlu anket başlatır.').addStringOption(o => o.setName('soru').setDescription('Anket sorusu nedir?').setRequired(true))
 ].map(c => c.toJSON());
 
-async function cekilisBitir(channelId, messageId) {
+async function cekilisBitir(channelId, messageId, isReroll = false) {
     const veri = await db.get(`cekilis_${messageId}`);
-    if (!veri || veri.bitti === true) return; 
+    if (!veri || (veri.bitti === true && !isReroll)) return; 
 
     const kanal = await client.channels.fetch(channelId).catch(() => null);
     if (!kanal) return;
@@ -475,7 +475,7 @@ client.on('interactionCreate', async interaction => {
             let title = '', emoji = '', color = '#000000';
             switch (interaction.customId) {
                 case 'booster_log': title = '🚀 BOOSTER İŞLEMİ'; emoji = '🚀'; color = '#FF0000'; break;
-                case 'vip_log':     title = '💎 VIP İŞLEMİ';     emoji = '💎'; color = '#00FFFF'; break;
+                case 'vip_log':     title = '💎 VIP İŞLEMİ';      emoji = '💎'; color = '#00FFFF'; break;
                 case 'invite_log':  title = '📨 İNVİTE İŞLEMİ';  emoji = '📨'; color = '#00FF00'; break;
                 case 'free_log':    title = '🎁 FREE İŞLEMİ';    emoji = '🎁'; color = '#FFD700'; break;
             }
@@ -529,7 +529,7 @@ client.on('interactionCreate', async interaction => {
             }
             const msgId = interaction.customId.replace('cekilis_reroll_', '');
             await interaction.reply({ content: 'Çekiliş yeniden sonuçlandırılıyor...', ephemeral: true });
-            await cekilisBitir(interaction.channel.id, msgId);
+            await cekilisBitir(interaction.channel.id, msgId, true);
         }
 
         // --- ANKET BUTONLARI ---
@@ -621,7 +621,7 @@ client.on('interactionCreate', async interaction => {
                         SendMessages: true
                     });
                 } catch (roleError) {
-                    console.log("Rol izinleri atanırken bot hiyerarşisine takıldı, fakat kanal başarıyla açıldı.");
+                    console.log("Rol izinleri atanırken hata oluştu.");
                 }
 
                 const kapatRow = new ActionRowBuilder().addComponents(
@@ -633,23 +633,21 @@ client.on('interactionCreate', async interaction => {
                 );
 
                 const hosgeldinEmbed = new EmbedBuilder()
-                    .setTitle(`💜 Destek Kanalı Açıldı`)
-                    .setDescription(`Merhaba ${interaction.user}, **${secilenKategori.replace('_', ' ').toUpperCase()}** konulu destek talebiniz başarıyla oluşturuldu.\n\nYetkililerimiz en kısa sürede sizinle ilgilenecektir. Talebi sonlandırmak isterseniz aşağıdaki butona basabilirsiniz.`)
-                    .setColor('#8A2BE2')
+                    .setTitle(`🎟️ Destek Talebi Açıldı`)
+                    .setDescription(`Merhaba ${interaction.user}, destek ekibimiz en kısa sürede sizinle ilgilenecektir.\n\nSorununuzu veya talebinizi detaylıca buraya yazabilirsiniz.`)
+                    .setColor('#2F3136')
                     .setTimestamp();
 
-                await ticketKanali.send({ content: `${interaction.user} | <@&${DESTEK_ROL_ID}>`, embeds: [hosgeldinEmbed], components: [kapatRow] });
-                await interaction.editReply({ content: `✅ Destek kanalınız başarıyla oluşturuldu: ${ticketKanali}` });
+                await ticketKanali.send({ content: `<@&${DESTEK_ROL_ID}> & <@&${YETKILI_ROL_ID}>`, embeds: [hosgeldinEmbed], components: [kapatRow] });
+                await interaction.editReply({ content: `✅ Ticket kanalınız başarıyla oluşturuldu: ${ticketKanali}` });
 
-            } catch (error) {
-                console.error(error);
-                await interaction.editReply({ content: '❌ Ticket kanalı oluşturulurken sistemsel bir hata meydana geldi. Lütfen botun sunucu rollerinde en üstte olduğundan emin olun!' });
+            } catch (err) {
+                console.error(err);
+                await interaction.editReply({ content: '❌ Kanal oluşturulurken bir hata meydana geldi!' });
             }
         }
     }
 });
 
-client.login(process.env.TOKEN).catch(err => {
-    console.error("TOKEN HATASI: Bot giriş yapamadı! TOKEN'i kontrol et.", err);
-    process.exit(1);
-});
+// --- BOT GİRİŞ SATIRI ---
+client.login(process.env.TOKEN);
