@@ -34,16 +34,15 @@ const LOG_KANAL_ID = '1520499241062109405';
 const BOOSTER_ROL_ID = '1520486297527910420';
 const VIP_ROL_ID = '1521129242094473337';
 const INVITE_ROL_ID = '1521129473863450664';
-function parseTurkceSure(sure) 
-
+function parseTurkceSure(sure) {
     return sure
         .toLowerCase()
         .trim()
-        .replace(/saniye|sn/g, 's') 
+        .replace(/saniye|sn/g, 's')
         .replace(/dakika|dk/g, 'm')
-        .replace(/hafta/g, 'w')     
-        .replace(/saat/g, 'h')     
-        .replace(/gun|gün|g/g, 'd');
+        .replace(/hafta/g, 'w')
+        .replace(/saat/g, 'h')
+        .replace(/gun|gün/g, 'd');
 }
 function generateFakeLogs(type) {
     const platforms = ["STEAM", "VALORANT", "EXXEN", "ANZIUM", "ZULA", "MINECRAFT", "NETFLIX", "SPOTIFY", "UPLAY", "ORIGIN", "EPIC"];
