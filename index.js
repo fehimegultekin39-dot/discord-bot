@@ -223,23 +223,36 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
-        // --- TICKET PANEL KOMUTU ---
-        if (interaction.commandName === 'ticketpanel') {
-            const row = new ActionRowBuilder().addComponents(
-                new StringSelectMenuBuilder()
-                    .setCustomId('ticket_secim')
-                    .setPlaceholder('Seçim yap')
-                    .addOptions([
-                        { label: 'Çekiliş Kazandım', value: 'cekilis_kazandim', emoji: '⚫', description: 'Kazandığınız çekiliş ödülünü talep etmek için burayı kullanın.' },
-                        { label: 'Drop Kazandım', value: 'drop_kazandim', emoji: '🎁', description: 'Yayın veya etkinliklerden kazandığınız dropları teslim alın.' },
-                        { label: 'Hesap Satın Alıcam', value: 'hesap_satinal', emoji: '💲', description: 'Güvenli hesap satın alma, fiyat ve stok bilgisi almak için.' },
-                        { label: 'Partnerlik & İşbirliği', value: 'partnerlik', emoji: '🤝', description: 'Ortaklık, reklam ya da sponsorluk görüşmeleri yapmak için.' },
-                        { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '⚪', description: 'Ekibimize katılmak ve yetkili olmak istiyorsanız başvurun.' },
-                        { label: 'Teknik Destek', value: 'teknik_destek', emoji: '🔧', description: 'Yaşadığınız problemlerle ilgili teknik destek talebi oluşturun.' },
-                        { label: 'Şikayet & Öneri', value: 'sikayet_oneri', emoji: '📝', description: 'Sunucu içi şikayetlerinizi veya önerilerinizi bize iletin.' },
-                        { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular ve sorularınız için bu kategoriyi seçin.' }
-                    ])
-            );
+     // --- TICKET PANEL KOMUTU ---
+if (interaction.commandName === 'ticketpanel') {
+    // 1. Önce "düşünüyor" durumunu, kullanıcının sadece kendisinin göreceği (ephemeral) şekilde kabul et
+    await interaction.deferReply({ ephemeral: true });
+
+    const row = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+            .setCustomId('ticket_secim')
+            .setPlaceholder('Seçim yap')
+            .addOptions([
+                { label: 'Çekiliş Kazandım', value: 'cekilis_kazandim', emoji: '⚫', description: 'Kazandığınız çekiliş ödülünü talep etmek için burayı kullanın.' },
+                { label: 'Drop Kazandım', value: 'drop_kazandim', emoji: '🎁', description: 'Yayın veya etkinliklerden kazandığınız dropları teslim alın.' },
+                { label: 'Hesap Satın Alıcam', value: 'hesap_satinal', emoji: '💲', description: 'Güvenli hesap satın alma, fiyat ve stok bilgisi almak için.' },
+                { label: 'Partnerlik & İşbirliği', value: 'partnerlik', emoji: '🤝', description: 'Ortaklık, reklam ya da sponsorluk görüşmeleri yapmak için.' },
+                { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '⚪', description: 'Ekibimize katılmak ve yetkili olmak istiyorsanız başvurun.' },
+                { label: 'Teknik Destek', value: 'teknik_destek', emoji: '🔧', description: 'Yaşadığınız problemlerle ilgili teknik destek talebi oluşturun.' },
+                { label: 'Şikayet & Öneri', value: 'sikayet_oneri', emoji: '📝', description: 'Sunucu içi şikayetlerinizi veya önerilerinizi bize iletin.' },
+                { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular ve sorularınız için bu kategoriyi seçin.' }
+            ])
+    );
+
+    const embed = new EmbedBuilder()
+        .setTitle('⚫ Black Market — Destek Merkezi')
+        .setDescription('Merhaba! Size nasıl yardımcı olabiliriz?\n\n⬇️ **Aşağıdan talebine uygun kategoriyi seçerek ticket açabilirsin.**')
+        .setColor('#000000')
+        .setFooter({ text: 'Black Market • @r2xzzs' });
+
+    // 2. reply yerine editReply kullanarak yanıtı gönder
+    await interaction.editReply({ embeds: [embed], components: [row] });
+}
 
             const embed = new EmbedBuilder()
                 .setTitle('⚫ Black Market — Destek Merkezi')
@@ -304,36 +317,31 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
-        // --- DROP KOMUTU ---
-        if (interaction.commandName === 'drop') {
-            const gorunenOdul = interaction.options.getString('gorunen');
-            const dropId = Date.now();
-            const customId = `drop_${dropId}`;
-            
-            await db.set(`drop_data_${dropId}`, {
-                gorunen: gorunenOdul,
-                baslatan: interaction.user.username,
-                bitti: false
-            });
+     if (interaction.commandName === 'drop') {
+    const gorunenOdul = interaction.options.getString('gorunen');
+    const dropId = Date.now();
+    const customId = `drop_${dropId}`;
+    
+    await db.set(`drop_data_${dropId}`, { gorunen: gorunenOdul, bitti: false });
 
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId(customId)
-                    .setLabel('ÖDÜLÜ KAP!')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setEmoji('🏆')
-            );
-            
-            const baslangicEmbed = new EmbedBuilder()
-                .setTitle('🎉 BLACK MARKET DROP!')
-                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve 66 Adet Karışık Premium Hesap içeren TXT listesi anında DM kutusuna gönderilir!*`)
-                .setColor('#000000')
-                .setFooter({ text: `Black Market • Başlatan: @${interaction.user.username}` })
-                .setTimestamp();
-            
-            await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
-        }
+    // 1. Görseli tanımla
+    const file = new AttachmentBuilder('./image_7e1141.png');
 
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(customId).setLabel('ÖDÜLÜ KAP!').setStyle(ButtonStyle.Secondary).setEmoji('🏆')
+    );
+    
+    const baslangicEmbed = new EmbedBuilder()
+        .setTitle('⚫ BLACK MARKET DROP!')
+        .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\nAşağıdaki butona ilk basan ödülün sahibi olur ve 66 Adet Karışık Premium Hesap içeren TXT listesi anında DM kutusuna gönderilir!`)
+        .setImage('attachment://image_7e1141.png') // 2. Görseli embed'e bağla
+        .setColor('#000000')
+        .setFooter({ text: `Black Market • Başlatan: @${interaction.user.username}` })
+        .setTimestamp();
+    
+    // 3. Görseli mesajla birlikte gönder
+    await interaction.reply({ embeds: [baslangicEmbed], components: [row], files: [file] });
+}
         // --- ÇEKİLİŞ KOMUTU ---
         if (interaction.commandName === 'cekilis') {
             const durInput = interaction.options.getString('sure');
