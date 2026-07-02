@@ -34,8 +34,8 @@ const commands = [
         .setName('drop')
         .setDescription('Ödüllü otomatik drop başlatır.')
         .addStringOption(o => o.setName('gorunen').setDescription('Kanala yansıyacak ödül ismi (Örn: 1x Minecraft Premium)').setRequired(true))
-        .addStringOption(o => o.setName('teslim_edilecek_odul').setDescription('Kazananın DMsine gidecek gizli hesap/kod/link').setRequired(true))
-        // ARTIK KESİNLİKLE GEÇMİŞTEKİ İSİMLE AYNI DEĞİL, SIFIRDAN ATTACHMENT YAPILDI:
+        // ARTIK BU SEÇENEK ZORUNLU DEĞİL! YAZI YERİNE FOTOĞRAF ATACAKLAR BURAYI BOŞ BIRAKABİLİR:
+        .addStringOption(o => o.setName('teslim_edilecek_odul').setDescription('Kazananın DMsine gidecek gizli hesap/kod (Fotoğraf atacaksanız boş bırakın)').setRequired(false))
         .addAttachmentOption(o => o.setName('gorsel_dosyasi').setDescription('PC veya Telefondan direkt fotoğraf yükleyin').setRequired(false)),
         
     new SlashCommandBuilder().setName('cekilis').setDescription('Yeni çekiliş başlatır.').addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)).addIntegerOption(o => o.setName('kazanan_sayisi').setDescription('Kazanan sayısı').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)),
@@ -135,7 +135,6 @@ client.once('ready', async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
         console.log('Slash komutları yenileniyor...');
-        // Sunucu bazlı eski kalıntıları tamamen ezmek için global komutları sıfırdan basıyoruz
         await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
         console.log('Slash komutları başarıyla güncellendi!');
     } catch (error) {
@@ -173,18 +172,23 @@ client.on('interactionCreate', async interaction => {
         // DROP KOMUTU
         if (interaction.commandName === 'drop') {
             const gorunenOdul = interaction.options.getString('gorunen');
+            // Yazılı ödül artık opsiyonel, girilmediyse null döner
             const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
-            // Yeni argüman ismiyle dosyayı yakalıyoruz
             const gorselDosyası = interaction.options.getAttachment('gorsel_dosyasi');
             
+            // Eğer hem yazı boşsa hem de fotoğraf yüklenmediyse uyarı verelim
+            if (!gizliOdul && !gorselDosyası) {
+                return interaction.reply({ content: '❌ **Hata:** Ya `teslim_edilecek_odul` kısmına yazılı bilgi girmeli ya da `gorsel_dosyasi` kısmına bir ödül fotoğrafı yüklemelisiniz!', flags: MessageFlags.Ephemeral });
+            }
+
             const gorselUrl = gorselDosyası ? gorselDosyası.url : null;
             const dropId = Date.now();
             const customId = `drop_${dropId}`;
             
             await db.set(`drop_data_${dropId}`, {
                 gorunen: gorunenOdul,
-                gizli: gizliOdul,
-                gorsel: gorselUrl,
+                gizli: gizliOdul, // yazı yoksa null olacak
+                gorsel: gorselUrl, // fotoğraf yoksa null olacak
                 baslatan: interaction.user.username,
                 bitti: false
             });
@@ -500,13 +504,17 @@ client.on('interactionCreate', async interaction => {
             await db.set(`drop_data_${dropId}.bitti`, true);
 
             try {
+                // Yazılı bilgi varsa yazıyı göster, yoksa görsel olduğunu belirt
+                const odulMetni = dropVeri.gizli ? `\`\`\`${dropVeri.gizli}\`\`\`` : `*Ödülünüz aşağıdaki görselde yer almaktadır!* ⬇️`;
+
                 const dmEmbed = new EmbedBuilder()
                     .setTitle('🎁 Drop Ödülün Teslim Edildi!')
-                    .setDescription(`Merhaba! Sunucudaki droptan başarıyla kaptığın ödül aşağıdadır:\n\n**Ödül:** \`${dropVeri.gorunen}\`\n**Teslim Edilen Bilgi/Kod:**\n\`\`\`${dropVeri.gizli}\`\`\n\n*Bizi tercih ettiğin için teşekkürler!*`)
+                    .setDescription(`Merhaba! Sunucudaki droptan başarıyla kaptığın ödül aşağıdadır:\n\n**Ödül İsmi:** \`${dropVeri.gorunen}\`\n**Teslim Edilen Bilgi:**\n${odulMetni}\n\n*Bizi tercih ettiğin için teşekkürler!*`)
                     .setColor('#00FF00')
                     .setFooter({ text: 'Drop Zone TR Otomatik Teslimat' })
                     .setTimestamp();
 
+                // Eğer komutu kullanan kişi bir görsel yüklediyse onu DM'de embed resmi yapıyoruz
                 if (dropVeri.gorsel) {
                     dmEmbed.setImage(dropVeri.gorsel);
                 }
