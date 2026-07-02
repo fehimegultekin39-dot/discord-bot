@@ -317,28 +317,33 @@ if (interaction.commandName === 'ticketpanel') {
             await interaction.reply({ embeds: [embed] });
         }
 
-     if (interaction.commandName === 'drop') {
-    const gorunenOdul = interaction.options.getString('gorunen');
-    const dropId = Date.now();
-    const customId = `drop_${dropId}`;
-    
-    await db.set(`drop_data_${dropId}`, { gorunen: gorunenOdul, bitti: false });
+   // Drop komutu - Minimalist ve Hataları Giderilmiş
+if (interaction.commandName === 'drop') {
+    // 1. ADIM: Yanıtı ertele (Uygulama yanıt vermedi hatasını %100 çözer)
+    await interaction.deferReply({ ephemeral: false }); 
 
-    // 1. Görseli tanımla
-    const file = new AttachmentBuilder('./image_7e1141.png');
+    const icerik = interaction.options.getString('yazi') || "Ödül içeriği yüklenemedi.";
+    const dosya = interaction.options.getAttachment('foto');
+
+    // Siyah minimalist tasarım
+    const embed = {
+        color: 0x000000, 
+        title: '⚫ BLACK MARKET | DROP',
+        description: `${icerik}`,
+        image: dosya ? { url: dosya.url } : null,
+        footer: { text: 'Black Market • Butona bas ve ödülü al' }
+    };
 
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(customId).setLabel('ÖDÜLÜ KAP!').setStyle(ButtonStyle.Secondary).setEmoji('🏆')
+        new ButtonBuilder()
+            .setCustomId('al_drop')
+            .setLabel('Ödülü Al')
+            .setStyle(ButtonStyle.Secondary)
     );
-    
-    const baslangicEmbed = new EmbedBuilder()
-        .setTitle('⚫ BLACK MARKET DROP!')
-        .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\nAşağıdaki butona ilk basan ödülün sahibi olur ve 66 Adet Karışık Premium Hesap içeren TXT listesi anında DM kutusuna gönderilir!`)
-        .setImage('attachment://image_7e1141.png') // 2. Görseli embed'e bağla
-        .setColor('#000000')
-        .setFooter({ text: `Black Market • Başlatan: @${interaction.user.username}` })
-        .setTimestamp();
-    
+
+    // 2. ADIM: Ertelediğin yanıtı düzenle
+    await interaction.editReply({ embeds: [embed], components: [row] });
+}
     // 3. Görseli mesajla birlikte gönder
     await interaction.reply({ embeds: [baslangicEmbed], components: [row], files: [file] });
 }
