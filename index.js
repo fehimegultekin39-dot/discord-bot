@@ -480,7 +480,6 @@ if (interaction.commandName === 'ticketpanel') {
                 await interaction.reply(`${m.user.tag} susturulması kaldırıldı.`);
             }
         }
-    }
 
     if (interaction.isButton()) {
         
