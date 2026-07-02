@@ -9,9 +9,15 @@ const app = express();
 app.get('/', (req, res) => res.send('Bot 7/24 Aktif!'));
 app.listen(3000);
 
+// YAPILANDIRMALAR
 const DESTEK_ROL_ID = '1520515365786882178';
 const YETKILI_ROL_ID = '1520515365786882178';
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1520473034694066361/1520530500022960198';
+
+// BURAYA KANAL VE ROL ID'LERINI GIR:
+const GELEN_GIDEN_KANAL_ID = 'KANAL_ID_BURAYA'; 
+const UYE_ROL_ID = 'UYE_ROL_ID_BURAYA';
+
 
 function parseTurkceSure(sure) {
     return sure
@@ -24,8 +30,16 @@ function parseTurkceSure(sure) {
         .replace(/gun|gün|g/g, 'd');
 }
 
+
+// Tüm sistemlerin ve gelen-gidenin sorunsuz çalışması için gerekli intent'ler
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions]
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent, 
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildMembers
+    ]
 });
 
 // SLASH KOMUTLARI
@@ -34,7 +48,6 @@ const commands = [
         .setName('drop')
         .setDescription('Ödüllü otomatik drop başlatır.')
         .addStringOption(o => o.setName('gorunen').setDescription('Kanala yansıyacak ödül ismi (Örn: 1x Minecraft Premium)').setRequired(true))
-        // ARTIK BU SEÇENEK ZORUNLU DEĞİL! YAZI YERİNE FOTOĞRAF ATACAKLAR BURAYI BOŞ BIRAKABİLİR:
         .addStringOption(o => o.setName('teslim_edilecek_odul').setDescription('Kazananın DMsine gidecek gizli hesap/kod (Fotoğraf atacaksanız boş bırakın)').setRequired(false))
         .addAttachmentOption(o => o.setName('gorsel_dosyasi').setDescription('PC veya Telefondan direkt fotoğraf yükleyin').setRequired(false)),
         
@@ -51,13 +64,14 @@ const commands = [
         .addStringOption(o => o.setName('not').setDescription('Eklemek istediğiniz not veya yorum').setRequired(true)),
         
     new SlashCommandBuilder().setName('yetkilipuan').setDescription('Yetkilinin vouch ve legit puanlarına bakar.').addUserOption(o => o.setName('kullanici').setDescription('Bakmak istediğiniz kişi')),
-    new SlashCommandBuilder().setName('ban').setDescription('Kullanıcıyı banlar.').addUserOption(o => o.setName('kisi').setDescription('Banlanacak kişi').setRequired(true)),
+    new SlashCommandBuilder().setName('ban').setDescription('Kullanıcıyi banlar.').addUserOption(o => o.setName('kisi').setDescription('Banlanacak kişi').setRequired(true)),
     new SlashCommandBuilder().setName('unban').setDescription('Ban kaldırır.').addStringOption(o => o.setName('kisi_id').setDescription('Kişi ID').setRequired(true)),
     new SlashCommandBuilder().setName('mute').setDescription('Kullanıcıyi susturur.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)).addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)),
     new SlashCommandBuilder().setName('unmute').setDescription('Susturmayı kaldırır.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)),
     new SlashCommandBuilder().setName('legit').setDescription('Legit onayı oluşturur.').addAttachmentOption(o => o.setName('image').setDescription('Kanıt görseli').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Verilen ödül').setRequired(true)).addUserOption(o => o.setName('alan').setDescription('Ödülü alan kişi').setRequired(true)).addStringOption(o => o.setName('not_').setDescription('Ekstra not').setRequired(false)),
     new SlashCommandBuilder().setName('anket').setDescription('Gelişmiş butonlu anket başlatır.').addStringOption(o => o.setName('soru').setDescription('Anket sorusu nedir?').setRequired(true))
 ].map(c => c.toJSON());
+
 
 async function cekilisBitir(channelId, messageId) {
     const veri = await db.get(`cekilis_${messageId}`);
@@ -131,6 +145,7 @@ async function cekilisBitir(channelId, messageId) {
     await kanal.send(`🎉 **Tebrikler!** ${kazananMention} **kazandı!** 💜`);
 }
 
+
 client.once('ready', async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
@@ -166,17 +181,55 @@ client.once('ready', async (c) => {
     }
 });
 
+
+// SUNUCUYA BİRİ KATILDIĞINDA (OTO ROL + BÜYÜK PP'Lİ HOŞ GELDİN MESAJI)
+client.on('guildMemberAdd', async (member) => {
+    // Otomatik Rol Verme Bölümü
+    const rol = member.guild.roles.cache.get(UYE_ROL_ID);
+    if (rol) {
+        await member.roles.add(rol).catch(err => console.error("Oto-rol verilemedi:", err));
+    }
+
+    // Gelen Log Kanalına Mesaj Gönderme Bölümü
+    const kanal = member.guild.channels.cache.get(GELEN_GIDEN_KANAL_ID);
+    if (kanal) {
+        const hosgeldinEmbed = new EmbedBuilder()
+            .setTitle('🥳 Sunucumuza Biri Katıldı!')
+            .setDescription(`💜 **Hoş geldin** ${member}! Seninle birlikte tam **${member.guild.memberCount}** kişi olduk. İçerisi şimdi daha da şenlendi! ✨`)
+            .setColor('#00FF00')
+            .setImage(member.user.displayAvatarURL({ dynamic: true, size: 1024 })) // Profil fotoğrafını kocaman gösterir
+            .setTimestamp();
+        
+        await kanal.send({ embeds: [hosgeldinEmbed] }).catch(err => console.error("Gelen mesajı atılamadı:", err));
+    }
+});
+
+
+// SUNUCUDAN BİRİ AYRILDIĞINDA (BÜYÜK PP'Lİ BAYBAY MESAJI)
+client.on('guildMemberRemove', async (member) => {
+    const kanal = member.guild.channels.cache.get(GELEN_GIDEN_KANAL_ID);
+    if (kanal) {
+        const gorusuruzEmbed = new EmbedBuilder()
+            .setTitle('👋 Biri Aramızdan Ayrıldı...')
+            .setDescription(`❌ **Baybay** **${member.user.tag}**... Sunucudan çıkış yaptı. Geride **${member.guild.memberCount}** kişi kaldık, özleneceksin!`)
+            .setColor('#FF0000')
+            .setImage(member.user.displayAvatarURL({ dynamic: true, size: 1024 })) // Profil fotoğrafını kocaman gösterir
+            .setTimestamp();
+        
+        await kanal.send({ embeds: [gorusuruzEmbed] }).catch(err => console.error("Giden mesajı atılamadı:", err));
+    }
+});
+
+
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
         
         // DROP KOMUTU
         if (interaction.commandName === 'drop') {
             const gorunenOdul = interaction.options.getString('gorunen');
-            // Yazılı ödül artık opsiyonel, girilmediyse null döner
             const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
             const gorselDosyası = interaction.options.getAttachment('gorsel_dosyasi');
             
-            // Eğer hem yazı boşsa hem de fotoğraf yüklenmediyse uyarı verelim
             if (!gizliOdul && !gorselDosyası) {
                 return interaction.reply({ content: '❌ **Hata:** Ya `teslim_edilecek_odul` kısmına yazılı bilgi girmeli ya da `gorsel_dosyasi` kısmına bir ödül fotoğrafı yüklemelisiniz!', flags: MessageFlags.Ephemeral });
             }
@@ -187,8 +240,8 @@ client.on('interactionCreate', async interaction => {
             
             await db.set(`drop_data_${dropId}`, {
                 gorunen: gorunenOdul,
-                gizli: gizliOdul, // yazı yoksa null olacak
-                gorsel: gorselUrl, // fotoğraf yoksa null olacak
+                gizli: gizliOdul,
+                gorsel: gorselUrl,
                 baslatan: interaction.user.username,
                 bitti: false
             });
@@ -210,6 +263,7 @@ client.on('interactionCreate', async interaction => {
             
             await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
         }
+
 
         // TICKET PANEL
         if (interaction.commandName === 'ticketpanel') {
@@ -237,6 +291,7 @@ client.on('interactionCreate', async interaction => {
 
             await interaction.reply({ embeds: [embed], components: [row] });
         }
+
 
         // VOUCH
         if (interaction.commandName === 'vouch') {
@@ -274,6 +329,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
+
         // YETKİLİ PUAN
         if (interaction.commandName === 'yetkilipuan') {
             const hedef = interaction.options.getUser('kullanici') || interaction.user;
@@ -291,6 +347,7 @@ client.on('interactionCreate', async interaction => {
             
             await interaction.reply({ embeds: [embed] });
         }
+
 
         // ÇEKİLİŞ
         if (interaction.commandName === 'cekilis') {
@@ -347,6 +404,7 @@ client.on('interactionCreate', async interaction => {
             }, msDur);
         }
 
+
         // MODERASYON
         if (['ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: 'Yetkin yok!', flags: MessageFlags.Ephemeral });
@@ -381,6 +439,7 @@ client.on('interactionCreate', async interaction => {
             if (interaction.commandName === 'unmute') { const m = interaction.options.getMember('kisi'); await m.timeout(null); await interaction.reply(`${m} susturması kaldırıldı.`); }
         }
 
+
         // LEGIT
         if (interaction.commandName === 'legit') {
             const alan = interaction.options.getUser('alan');
@@ -398,6 +457,7 @@ client.on('interactionCreate', async interaction => {
             
             await interaction.reply({ embeds: [embed] });
         }
+
 
         // ANKET
         if (interaction.commandName === 'anket') {
@@ -424,6 +484,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
     }
+
 
     // SELECT MENUS
     else if (interaction.isStringSelectMenu()) {
@@ -478,6 +539,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
+
     // BUTTONS
     else if (interaction.isButton()) {
         if (interaction.customId === 'ticket_kapat') {
@@ -504,17 +566,15 @@ client.on('interactionCreate', async interaction => {
             await db.set(`drop_data_${dropId}.bitti`, true);
 
             try {
-                // Yazılı bilgi varsa yazıyı göster, yoksa görsel olduğunu belirt
                 const odulMetni = dropVeri.gizli ? `\`\`\`${dropVeri.gizli}\`\`\`` : `*Ödülünüz aşağıdaki görselde yer almaktadır!* ⬇️`;
 
                 const dmEmbed = new EmbedBuilder()
                     .setTitle('🎁 Drop Ödülün Teslim Edildi!')
-                    .setDescription(`Merhaba! Sunucudaki droptan başarıyla kaptığın ödül aşağıdadır:\n\n**Ödül İsmi:** \`${dropVeri.gorunen}\`\n**Teslim Edilen Bilgi:**\n${odulMetni}\n\n*Bizi tercih ettiğin için teşekkürler!*`)
+                    .setDescription(`Merhaba! Sunucudaki droptan başarıyla kaptığın ödül aşağıdadır:\n\n**Ödül :** \`${dropVeri.gorunen}\`\n**Teslim Edilen Bilgi:**\n${odulMetni}\n\n*Bizi tercih ettiğin için teşekkürler!*`)
                     .setColor('#00FF00')
                     .setFooter({ text: 'Drop Zone TR Otomatik Teslimat' })
                     .setTimestamp();
 
-                // Eğer komutu kullanan kişi bir görsel yüklediyse onu DM'de embed resmi yapıyoruz
                 if (dropVeri.gorsel) {
                     dmEmbed.setImage(dropVeri.gorsel);
                 }
@@ -544,6 +604,7 @@ client.on('interactionCreate', async interaction => {
                 return interaction.reply({ content: '❌ **Ödül Alınamadı:** DM kutun kapalı olduğu için bot sana mesaj gönderemedi!', flags: MessageFlags.Ephemeral });
             }
         }
+
 
         // REROLL
         if (interaction.customId.startsWith('cekilis_reroll_')) {
@@ -586,63 +647,17 @@ client.on('interactionCreate', async interaction => {
                         { name: '👤 Başlatan', value: `> ${baslatanUye}`, inline: false },
                         { name: '📅 Çekiliş Zamanı', value: `*Başlangıç:* <t:${veri.simdi}:F>\n*Son Yenilenme:* <t:${Math.floor(Date.now() / 1000)}:R>`, inline: false }
                     )
-                    .setColor('#FF00AA')
-                    .setFooter({ text: `Drop Zone TR • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'} • Yenilenme!` })
+                    .setColor('#00FFAA')
+                    .setFooter({ text: `Drop Zone TR • Yenileyen: ${interaction.user.username}` })
                     .setTimestamp();
 
                 await targetMessage.edit({ embeds: [yeniEmbed] });
-                await interaction.reply({ content: `✅ Çekiliş başarıyla yeniden sonuçlandırıldı!`, flags: MessageFlags.Ephemeral });
-                await interaction.channel.send(`🎉 **Çekiliş Yeniden Çekildi!** Yeni Kazanan(lar): ${kazananMention} 💜`);
+                await interaction.reply({ content: `✅ Çekiliş başarıyla yeniden çekildi! Yeni kazanan(lar): ${kazananMention}` });
 
             } catch (err) {
                 console.error(err);
-                await interaction.reply({ content: '❌ Yeniden çekme işlemi esnasında teknik bir hata oluştu.', flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: '❌ Yeniden çekme işlemi sırasında bir hata oluştu.', flags: MessageFlags.Ephemeral });
             }
-        }
-
-        // ANKET BUTONLARI
-        if (interaction.customId.startsWith('anket_')) {
-            const parcalar = interaction.customId.split('_'); 
-            const tip = parcalar[1];
-            const anketId = parcalar[2];
-            const userId = interaction.user.id;
-
-            let evetOylari = await db.get(`anket_${anketId}_evet`) || [];
-            let hayirOylari = await db.get(`anket_${anketId}_hayir`) || [];
-            const soru = await db.get(`anket_${anketId}_soru`) || "Bilinmeyen Soru";
-            const sahip = await db.get(`anket_${anketId}_sahip`) || "Bilinmiyor";
-
-            if (tip === 'evet') {
-                if (evetOylari.includes(userId)) {
-                    evetOylari = evetOylari.filter(id => id !== userId);
-                } else {
-                    evetOylari.push(userId);
-                    hayirOylari = hayirOylari.filter(id => id !== userId);
-                }
-            } else if (tip === 'hayir') {
-                if (hayirOylari.includes(userId)) {
-                    hayirOylari = hayirOylari.filter(id => id !== userId);
-                } else {
-                    hayirOylari.push(userId);
-                    evetOylari = evetOylari.filter(id => id !== userId);
-                }
-            }
-
-            await db.set(`anket_${anketId}_evet`, evetOylari);
-            await db.set(`anket_${anketId}_hayir`, hayirOylari);
-
-            const toplamOy = evetOylari.length + hayirOylari.length;
-            const evetYuzde = toplamOy === 0 ? 0 : Math.round((evetOylari.length / toplamOy) * 100);
-            const hayirYuzde = toplamOy === 0 ? 0 : Math.round((hayirOylari.length / toplamOy) * 100);
-
-            const guncelEmbed = new EmbedBuilder()
-                .setTitle('📊 DROP ZONE TR - ANKET')
-                .setDescription(`**Soru:** ${soru}\n\n🟩 **Evet:** \`${evetYuzde}%\` (${evetOylari.length} Oy)\n🟥 **Hayır:** \`${hayirYuzde}%\` (${hayirOylari.length} Oy)`)
-                .setColor('#8A2BE2')
-                .setFooter({ text: `Anketi Başlatan: ${sahip}` })
-                .setTimestamp();
-
-            await interaction.update({ embeds: [guncelEmbed] });
         }
     }
 });
