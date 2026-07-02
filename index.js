@@ -9,7 +9,6 @@ const app = express();
 app.get('/', (req, res) => res.send('Bot 7/24 Aktif!'));
 app.listen(3000);
 
-// YENİ SUNUCU ID AYARLARI
 const DESTEK_ROL_ID = '1520515365786882178';
 const YETKILI_ROL_ID = '1520515365786882178';
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1520473034694066361/1520530500022960198';
@@ -29,13 +28,15 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions]
 });
 
+// SLASH KOMUTLARI TANIMLAMALARI
 const commands = [
     new SlashCommandBuilder()
         .setName('drop')
         .setDescription('Ödüllü otomatik drop başlatır.')
         .addStringOption(o => o.setName('gorunen').setDescription('Kanala yansıyacak ödül ismi (Örn: 1x Minecraft Premium)').setRequired(true))
         .addStringOption(o => o.setName('teslim_edilecek_odul').setDescription('Kazananın DMsine gidecek gizli hesap/kod/link').setRequired(true))
-        .addStringOption(o => o.setName('gorsel_linki').setDescription('İsteğe bağlı: Kazananın DMsine gidecek ödül görselinin linki').setRequired(false)),
+        // ESKİ "gorsel_linki" TAMAMEN KALKTI. ARTIK YUKLEME ALANI OLDU:
+        .addAttachmentOption(o => o.setName('gorsel_dosyasi').setDescription('Kazananın DMsine gidecek ödül fotoğrafını direkt yükleyin').setRequired(false)),
         
     new SlashCommandBuilder().setName('cekilis').setDescription('Yeni çekiliş başlatır.').addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)).addIntegerOption(o => o.setName('kazanan_sayisi').setDescription('Kazanan sayısı').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)),
     new SlashCommandBuilder().setName('ticketpanel').setDescription('Destek panelini gönderir.'),
@@ -132,7 +133,15 @@ async function cekilisBitir(channelId, messageId) {
 
 client.once('ready', async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-    await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
+    try {
+        // SUNUCUDAKİ ESKİ KOMUT ÖNBELLEĞİNİ SIFIRLAMAK İÇİN REST İLE YENİDEN KAYDEDİYORUZ
+        console.log('Slash komutları yenileniyor...');
+        await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
+        console.log('Slash komutları başarıyla güncellendi!');
+    } catch (error) {
+        console.error('Komutlar yüklenirken hata oluştu:', error);
+    }
+    
     console.log(`${c.user.tag} aktif!`);
 
     const tumVeriler = await db.all();
@@ -159,9 +168,45 @@ client.once('ready', async (c) => {
 });
 
 client.on('interactionCreate', async interaction => {
-    
     if (interaction.isChatInputCommand()) {
         
+        // DROP KOMUTU İŞLEYİCİSİ
+        if (interaction.commandName === 'drop') {
+            const gorunenOdul = interaction.options.getString('gorunen');
+            const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
+            // ARTIK DOSYAYI BURADAN ÇEKİYORUZ
+            const gorselDosyası = interaction.options.getAttachment('gorsel_dosyasi');
+            
+            const gorselUrl = gorselDosyası ? gorselDosyası.url : null;
+            const dropId = Date.now();
+            const customId = `drop_${dropId}`;
+            
+            await db.set(`drop_data_${dropId}`, {
+                gorunen: gorunenOdul,
+                gizli: gizliOdul,
+                gorsel: gorselUrl,
+                baslatan: interaction.user.username,
+                bitti: false
+            });
+
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(customId)
+                    .setLabel('ÖDÜLÜ KAP!')
+                    .setStyle(ButtonStyle.Success)
+                    .setEmoji('🏆')
+            );
+            
+            const baslangicEmbed = new EmbedBuilder()
+                .setTitle('🎉 DROP ZONE TR DROP!')
+                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve ödül otomatik olarak DM kutusuna gönderilir!*`)
+                .setColor('#8A2BE2')
+                .setFooter({ text: `Drop Zone TR • Başlatan: @${interaction.user.username}` })
+                .setTimestamp();
+            
+            await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
+        }
+
         // TICKET PANEL
         if (interaction.commandName === 'ticketpanel') {
             const row = new ActionRowBuilder().addComponents(
@@ -176,7 +221,7 @@ client.on('interactionCreate', async interaction => {
                         { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '🔵', description: 'Ekibimize katılmak ve yetkili olmak istiyorsanız başvurun.' },
                         { label: 'Teknik Destek', value: 'teknik_destek', emoji: '🔧', description: 'Yaşadığınız problemlerle ilgili teknik destek talebi oluşturun.' },
                         { label: 'Şikayet & Öneri', value: 'sikayet_oneri', emoji: '📝', description: 'Sunucu içi şikayetlerinizi veya önerilerinizi bize iletin.' },
-                        { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular ve sorularınız için bu kategoriyi seçin.' }
+                        { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular ogün sorularınız için bu kategoriyi seçin.' }
                     ])
             );
 
@@ -189,7 +234,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
-        // VOUCH (HERKESE AÇIK)
+        // VOUCH
         if (interaction.commandName === 'vouch') {
             const yetkili = interaction.options.getUser('veren');
             const alanUye = interaction.options.getUser('alan');
@@ -241,41 +286,6 @@ client.on('interactionCreate', async interaction => {
                 .setThumbnail(hedef.displayAvatarURL());
             
             await interaction.reply({ embeds: [embed] });
-        }
-
-        // DROP KOMUTU (GÖRSEL DESTEKLİ)
-        if (interaction.commandName === 'drop') {
-            const gorunenOdul = interaction.options.getString('gorunen');
-            const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
-            const gorselLinki = interaction.options.getString('gorsel_linki') || null;
-            
-            const dropId = Date.now();
-            const customId = `drop_${dropId}`;
-            
-            await db.set(`drop_data_${dropId}`, {
-                gorunen: gorunenOdul,
-                gizli: gizliOdul,
-                gorsel: gorselLinki,
-                baslatan: interaction.user.username,
-                bitti: false
-            });
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId(customId)
-                    .setLabel('ÖDÜLÜ KAP!')
-                    .setStyle(ButtonStyle.Success)
-                    .setEmoji('🏆')
-            );
-            
-            const baslangicEmbed = new EmbedBuilder()
-                .setTitle('🎉 DROP ZONE TR DROP!')
-                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve ödül otomatik olarak DM kutusuna gönderilir!*`)
-                .setColor('#8A2BE2')
-                .setFooter({ text: `Drop Zone TR • Başlatan: @${interaction.user.username}` })
-                .setTimestamp();
-            
-            await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
         }
 
         // ÇEKİLİŞ KOMUTU
@@ -333,7 +343,7 @@ client.on('interactionCreate', async interaction => {
             }, msDur);
         }
 
-        // MODERASYON SİSTEMİ
+        // MODERASYON
         if (['ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: 'Yetkin yok!', flags: MessageFlags.Ephemeral });
             
@@ -385,7 +395,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
-        // ANKET KOMUTU
+        // ANKET
         if (interaction.commandName === 'anket') {
             const soru = interaction.options.getString('soru');
             const anketId = Date.now();
@@ -466,7 +476,6 @@ client.on('interactionCreate', async interaction => {
 
     // BUTTONS
     else if (interaction.isButton()) {
-        
         if (interaction.customId === 'ticket_kapat') {
             await interaction.reply({ content: '🔒 Bu bilet kanalı 5 saniye içinde siliniyor...' });
             setTimeout(async () => {
@@ -475,7 +484,7 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        // DROP ÖDÜLÜ KAPMA (GÖRSEL DESTEKLİ)
+        // DROP ÖDÜLÜ KAPMA BUTTONU
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const dropVeri = await db.get(`drop_data_${dropId}`);
@@ -498,7 +507,6 @@ client.on('interactionCreate', async interaction => {
                     .setFooter({ text: 'Drop Zone TR Otomatik Teslimat' })
                     .setTimestamp();
 
-                // Eğer drop oluşturulurken bir görsel eklendiyse DM embedine ekliyoruz
                 if (dropVeri.gorsel) {
                     dmEmbed.setImage(dropVeri.gorsel);
                 }
@@ -525,11 +533,11 @@ client.on('interactionCreate', async interaction => {
             } catch (dmHata) {
                 console.error("DM gönderilemedi:", dmHata);
                 await db.set(`drop_data_${dropId}.bitti`, false); 
-                return interaction.reply({ content: '❌ **Ödül Alınamadı:** DM kutun kapalı olduğu için bot sana mesaj gönderemedi! Lütfen gizlilik ayarlarından sunucu üyelerinden gelen mesajlara izin verip tekrar butona bas.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ **Ödül Alınamadı:** DM kutun kapalı olduğu için bot sana mesaj gönderemedi!', flags: MessageFlags.Ephemeral });
             }
         }
 
-        // REROLL BUTTON
+        // REROLL
         if (interaction.customId.startsWith('cekilis_reroll_')) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
                 return interaction.reply({ content: '❌ **Yetki Yetersiz:** Bu butonu sadece yetkili ekibi kullanabilir.', flags: MessageFlags.Ephemeral });
@@ -571,7 +579,7 @@ client.on('interactionCreate', async interaction => {
                         { name: '📅 Çekiliş Zamanı', value: `*Başlangıç:* <t:${veri.simdi}:F>\n*Son Yenilenme:* <t:${Math.floor(Date.now() / 1000)}:R>`, inline: false }
                     )
                     .setColor('#FF00AA')
-                    .setFooter({ text: `Drop Zone TR • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'} • Yeniden Çekildi!` })
+                    .setFooter({ text: `Drop Zone TR • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'} • Yenilenme!` })
                     .setTimestamp();
 
                 await targetMessage.edit({ embeds: [yeniEmbed] });
@@ -584,7 +592,7 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // ANKET SİSTEMİ
+        // ANKET BUTONLARI
         if (interaction.customId.startsWith('anket_')) {
             const parcalar = interaction.customId.split('_'); 
             const tip = parcalar[1];
