@@ -28,15 +28,15 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions]
 });
 
-// SLASH KOMUTLARI TANIMLAMALARI
+// SLASH KOMUTLARI
 const commands = [
     new SlashCommandBuilder()
         .setName('drop')
         .setDescription('Ödüllü otomatik drop başlatır.')
         .addStringOption(o => o.setName('gorunen').setDescription('Kanala yansıyacak ödül ismi (Örn: 1x Minecraft Premium)').setRequired(true))
         .addStringOption(o => o.setName('teslim_edilecek_odul').setDescription('Kazananın DMsine gidecek gizli hesap/kod/link').setRequired(true))
-        // ESKİ "gorsel_linki" TAMAMEN KALKTI. ARTIK YUKLEME ALANI OLDU:
-        .addAttachmentOption(o => o.setName('gorsel_dosyasi').setDescription('Kazananın DMsine gidecek ödül fotoğrafını direkt yükleyin').setRequired(false)),
+        // ARTIK KESİNLİKLE GEÇMİŞTEKİ İSİMLE AYNI DEĞİL, SIFIRDAN ATTACHMENT YAPILDI:
+        .addAttachmentOption(o => o.setName('gorsel_dosyasi').setDescription('PC veya Telefondan direkt fotoğraf yükleyin').setRequired(false)),
         
     new SlashCommandBuilder().setName('cekilis').setDescription('Yeni çekiliş başlatır.').addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)).addIntegerOption(o => o.setName('kazanan_sayisi').setDescription('Kazanan sayısı').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)),
     new SlashCommandBuilder().setName('ticketpanel').setDescription('Destek panelini gönderir.'),
@@ -134,8 +134,8 @@ async function cekilisBitir(channelId, messageId) {
 client.once('ready', async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
-        // SUNUCUDAKİ ESKİ KOMUT ÖNBELLEĞİNİ SIFIRLAMAK İÇİN REST İLE YENİDEN KAYDEDİYORUZ
         console.log('Slash komutları yenileniyor...');
+        // Sunucu bazlı eski kalıntıları tamamen ezmek için global komutları sıfırdan basıyoruz
         await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
         console.log('Slash komutları başarıyla güncellendi!');
     } catch (error) {
@@ -170,11 +170,11 @@ client.once('ready', async (c) => {
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
         
-        // DROP KOMUTU İŞLEYİCİSİ
+        // DROP KOMUTU
         if (interaction.commandName === 'drop') {
             const gorunenOdul = interaction.options.getString('gorunen');
             const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
-            // ARTIK DOSYAYI BURADAN ÇEKİYORUZ
+            // Yeni argüman ismiyle dosyayı yakalıyoruz
             const gorselDosyası = interaction.options.getAttachment('gorsel_dosyasi');
             
             const gorselUrl = gorselDosyası ? gorselDosyası.url : null;
@@ -288,7 +288,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
-        // ÇEKİLİŞ KOMUTU
+        // ÇEKİLİŞ
         if (interaction.commandName === 'cekilis') {
             await interaction.deferReply(); 
 
@@ -484,7 +484,7 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        // DROP ÖDÜLÜ KAPMA BUTTONU
+        // DROP ÖDÜLÜ KAPMA
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const dropVeri = await db.get(`drop_data_${dropId}`);
