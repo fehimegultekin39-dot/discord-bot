@@ -2,8 +2,8 @@ const { ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } = require('dis
 const { QuickDB } = require('quick.db');
 const db = new QuickDB();
 
-// Menüyü kanala kurabilecek yetkililer (Komutu kullanabilecek olanlar)
-const KOMUTU_KULLANACAK_ROLLER = ['1521129473863450664', '1521129242094473337', '1520486297527910420']; 
+// Menüyü kanala kurabilecek yetkililer (Komutu sadece bu role sahip olanlar açabilir)
+const KOMUTU_KULLANACAK_ROLLER = ['1520474155210768424']; 
 
 // Menüden hesap çekebilecek normal üyelerin sahip olması gereken roller
 const HESAP_CEKEBILECEK_ROLLER = ['1521129473863450664', '1521129242094473337', '1520486297527910420'];
@@ -34,11 +34,11 @@ async function rastgeleBenzersizHesap(kategori) {
 
 // 2. Menü Oluşturucu (Slash komutu tetiklendiğinde çalışan kısım)
 async function sendFreeLogMenu(interaction) {
-    // Burada sadece senin/yetkililerin komutu kullanıp kullanamayacağına bakıyoruz
+    // Sadece belirttiğin rolün komutu tetiklemesine izin veriyoruz
     const canSetup = interaction.member.roles.cache.some(r => KOMUTU_KULLANACAK_ROLLER.includes(r.id));
     if (!canSetup) {
         return interaction.reply({ 
-            content: '❌ Bu menüyü kurulum komutunu sadece yetkililer kullanabilir!', 
+            content: '❌ Bu menü kurulum komutunu sadece gerekli yetkiye sahip kişiler kullanabilir!', 
             ephemeral: true 
         });
     }
@@ -60,7 +60,6 @@ async function sendFreeLogMenu(interaction) {
             ])
     );
 
-    // ephemeral: true KALDIRILDI. Menü kanalda kalıcı mesaj olarak görünecek.
     await interaction.reply({ 
         content: '⚫ **Black Market • Free Log Menüsü**\nİstediğin kategoriyi seç, hesabın anında DM kutuna düşsün!', 
         components: [row]
@@ -99,7 +98,7 @@ async function handleFreeLog(interaction) {
             // Kullanıcıya DM Gönderimi
             await interaction.user.send(`🎉 **Black Market - Free Log Teslimatı**\n\n**Kategori:** ${kategori.toUpperCase()}\n**Stok:** ${stokMiktari} Adet\n**Hesap:** \`${hesap}\`\n\n*İyi kullanımlar!*`);
             
-            // Seçimi yapan kişiye gizli onay mesajı (Böylece menü kanaldan kaybolmaz, sadece o kişi bilgilendirilir)
+            // Seçimi yapan kişiye gizli onay mesajı
             await interaction.reply({ 
                 content: `✅ **${kategori.toUpperCase()}** kategorisinden bir hesap DM kutuna gönderildi!`, 
                 ephemeral: true 
