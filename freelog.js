@@ -49,53 +49,71 @@ async function sendFreeLogMenu(interaction) {
     const row = new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
             .setCustomId('free_log_menu')
-            .setPlaceholder('Lütfen bir kategori seç...')
+            .setPlaceholder('Sahip olduğun role uygun şansı seç...')
             .addOptions([
-                { label: 'Steam', value: 'steam', emoji: '🎮' },
-                { label: 'Valorant', value: 'valorant', emoji: '🔥' },
-                { label: 'Zula', value: 'zula', emoji: '⚔️' },
-                { label: 'Ez Global', value: 'ezglobal', emoji: '🧿' },
-                { label: 'Minecraft', value: 'minecraft', emoji: '⛏️' },
-                { label: 'Roblox', value: 'roblox', emoji: '🧱' },
-                { label: 'Netflix', value: 'netflix', emoji: '📺' },
-                { label: 'Disney+', value: 'disney', emoji: '✨' },
-                { label: 'Exxen', value: 'exxen', emoji: '💰' }
+                { 
+                    label: 'Booster Şansı (En Yüksek)', 
+                    value: 'booster_sansi', 
+                    description: 'Stok: 954 Adet | Çıkma Şansı: %99 🔥',
+                    emoji: '🚀' 
+                },
+                { 
+                    label: 'VIP Şansı (Orta)', 
+                    value: 'vip_sansi', 
+                    description: 'Stok: 512 Adet | Çıkma Şansı: %75 ✨',
+                    emoji: '💎' 
+                },
+                { 
+                    label: 'Invite+ Şansı (En Düşük)', 
+                    value: 'invite_sansi', 
+                    description: 'Stok: 142 Adet | Çıkma Şansı: %40 📉',
+                    emoji: '🎟️' 
+                }
             ])
     );
 
     await interaction.reply({ 
-        content: '⚫ **Black Market • Free Log Menüsü**\nİstediğin kategoriyi seç, hesabın anında DM kutuna düşsün!', 
+        content: '⚫ **Black Market • Free Log Menüsü**\nSahip olduğun role uygun şans seçeneğine tıkla, benzersiz hesabın anında DM kutuna düşsün!', 
         components: [row]
     });
 }
 
-// 3. İşlem Yapıcı (Rol hiyerarşisine göre yalandan şans/stok hesabı)
+// 3. İşlem Yapıcı (Zaman aşımı hatası giderildi)
 async function handleFreeLog(interaction) {
     if (interaction.customId === 'free_log_menu') {
+        
+        // Discord'a "işlem yapıyorum, bekle" diyoruz (3 saniyelik sınırı 15 dakikaya çıkartır)
+        await interaction.deferReply({ ephemeral: true });
+
+        const secilenDeger = interaction.values[0];
         const userRoles = interaction.member.roles.cache;
         
-        // Kullanıcının sahip olduğu en yüksek rolü belirliyoruz
+        let gerekliRolID = "";
         let aktifRolIsmi = "";
         let minStok = 0;
         let maxStok = 0;
 
-        if (userRoles.has(ROLLER.BOOSTER)) {
+        if (secilenDeger === 'booster_sansi') {
+            gerekliRolID = ROLLER.BOOSTER;
             aktifRolIsmi = "Booster";
-            minStok = 700; // En yüksek şans/stok
+            minStok = 700;
             maxStok = 999;
-        } else if (userRoles.has(ROLLER.VIP)) {
+        } else if (secilenDeger === 'vip_sansi') {
+            gerekliRolID = ROLLER.VIP;
             aktifRolIsmi = "VIP";
-            minStok = 400; // Orta şans/stok
+            minStok = 400;
             maxStok = 699;
-        } else if (userRoles.has(ROLLER.INVITE)) {
+        } else if (secilenDeger === 'invite_sansi') {
+            gerekliRolID = ROLLER.INVITE;
             aktifRolIsmi = "Invite+";
-            minStok = 100; // En düşük şans/stok
+            minStok = 100;
             maxStok = 399;
-        } else {
-            // Hiçbiri yoksa hata ver
-            return interaction.reply({ 
-                content: '❌ Bu menüyü kullanmak için **Invite+, VIP veya Booster** rollerinden birine sahip olmalısın!', 
-                ephemeral: true 
+        }
+
+        // Rol Kontrolü
+        if (!userRoles.has(gerekliRolID)) {
+            return interaction.editReply({ 
+                content: `❌ Seçtiğin **${aktifRolIsmi}** şansını kullanabilmek için o role sahip olmalısın!`
             });
         }
 
@@ -104,26 +122,24 @@ async function handleFreeLog(interaction) {
         const customStatus = member.presence?.activities?.find(a => a.type === 4);
         
         if (!customStatus || !customStatus.state || !customStatus.state.includes('.gg/dropzonetr')) {
-            return interaction.reply({
-                content: '❌ **Hata:** Free log çekebilmek için Discord profil durumuna **.gg/dropzonetr** yazman gerekiyor!',
-                ephemeral: true
+            return interaction.editReply({
+                content: '❌ **Hata:** Free log çekebilmek için Discord profil durumuna **.gg/dropzonetr** yazman gerekiyor!'
             });
         }
 
-        const kategori = interaction.values[0];
-        const hesap = await rastgeleBenzersizHesap(kategori);
+        const kategoriler = ['steam', 'valorant', 'minecraft', 'roblox', 'netflix', 'disney'];
+        const rastgeleKategori = kategoriler[Math.floor(Math.random() * kategoriler.length)];
         
-        // Sahip olduğu role göre yalandan random stok miktarı
+        const hesap = await rastgeleBenzersizHesap(rastgeleKategori);
         const stokMiktari = Math.floor(Math.random() * (maxStok - minStok + 1) + minStok);
 
         try {
             // DM Gönderimi
-            await interaction.user.send(`🎉 **Black Market - Free Log Teslimatı**\n\n**Kategori:** ${kategori.toUpperCase()}\n**Mevcut Rol Şansınız:** \`${aktifRolIsmi}\` 🚀\n**Kalan Kategori Stoğu:** ${stokMiktari} Adet\n**Hesap:** \`${hesap}\`\n\n*İyi kullanımlar!*`);
+            await interaction.user.send(`🎉 **Black Market - Free Log Teslimatı**\n\n**Kategori:** ${rastgeleKategori.toUpperCase()}\n**Mevcut Rol Şansınız:** \`${aktifRolIsmi}\` 🚀\n**Kalan Kategori Stoğu:** ${stokMiktari} Adet\n**Hesap:** \`${hesap}\`\n\n*İyi kullanımlar!*`);
             
-            // Gizli Onay
-            await interaction.reply({ 
-                content: `✅ **${kategori.toUpperCase()}** kategorisinden bir hesap **${aktifRolIsmi}** özel şansı ile DM kutuna gönderildi!`, 
-                ephemeral: true 
+            // Gizli Onay (deferReply kullandığımız için editReply yapıyoruz)
+            await interaction.editReply({ 
+                content: `✅ **${rastgeleKategori.toUpperCase()}** kategorisinden bir hesap **${aktifRolIsmi}** özel şansı ile DM kutuna gönderildi!`
             });
 
             // HESAP ALANLAR KANALINA LOG GÖNDERME
@@ -134,7 +150,7 @@ async function handleFreeLog(interaction) {
                     .setDescription(`Bir kullanıcı sistemden ücretsiz hesap teslim aldı.`)
                     .addFields(
                         { name: '👤 Kullanıcı', value: `${interaction.user} (\`${interaction.user.id}\`)`, inline: true },
-                        { name: '🎮 Kategori', value: `\`${kategori.toUpperCase()}\``, inline: true },
+                        { name: '🎮 Kategori', value: `\`${rastgeleKategori.toUpperCase()}\``, inline: true },
                         { name: '⚡ Kullanılan Rol Şansı', value: `\`${aktifRolIsmi}\``, inline: true },
                         { name: '🔐 Alınan Hesap', value: `\`\`\`${hesap}\`\`\``, inline: false }
                     )
@@ -147,9 +163,8 @@ async function handleFreeLog(interaction) {
             }
 
         } catch (e) {
-            await interaction.reply({ 
-                content: '❌ DM kutun kapalı olduğu için hesabı gönderemedim! Lütfen DM ayarlarını açıp tekrar dene.', 
-                ephemeral: true 
+            await interaction.editReply({ 
+                content: '❌ DM kutun kapalı olduğu için hesabı gönderemedim! Lütfen DM ayarlarını açıp tekrar dene.'
             });
         }
     }
