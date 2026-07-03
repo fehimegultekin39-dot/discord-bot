@@ -5,9 +5,6 @@ const db = new QuickDB();
 const express = require('express');
 const ms = require('ms');
 
-// FREELOG MODÜLÜNÜ BAĞLIYORUZ
-const freelogModul = require('./freelog.js');
-
 const app = express();
 app.get('/', (req, res) => res.send('Bot 7/24 Aktif!'));
 app.listen(3000);
@@ -17,7 +14,7 @@ const DESTEK_ROL_ID = '1520515365786882178';
 const YETKILI_ROL_ID = '1520515365786882178';
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1520473034694066361/1520530500022960198';
 
-// BURAYA KANAL VE ROL ID'LERINI GIR:
+// KANAL VE ROL ID'LERİ
 const GELEN_GIDEN_KANAL_ID = 'KANAL_ID_BURAYA'; 
 const UYE_ROL_ID = 'UYE_ROL_ID_BURAYA';
 
@@ -40,7 +37,7 @@ const client = new Client({
         GatewayIntentBits.MessageContent, 
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildPresences // ⚠️ FREELOG DURUM KONTROLÜ İÇİN ŞART!
+        GatewayIntentBits.GuildPresences
     ],
     partials: [
         Partials.Channel,
@@ -50,7 +47,7 @@ const client = new Client({
     ]
 });
 
-// SLASH KOMUTLARI
+// SLASH KOMUTLARI (Freelog Tamamen Kaldırıldı)
 const commands = [
     new SlashCommandBuilder()
         .setName('drop')
@@ -77,10 +74,7 @@ const commands = [
     new SlashCommandBuilder().setName('mute').setDescription('Kullanıcıyi susturur.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)).addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)),
     new SlashCommandBuilder().setName('unmute').setDescription('Susturmayı kaldırır.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)),
     new SlashCommandBuilder().setName('legit').setDescription('Legit onayı oluşturur.').addAttachmentOption(o => o.setName('image').setDescription('Kanıt görseli').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Verilen ödül').setRequired(true)).addUserOption(o => o.setName('alan').setDescription('Ödülü alan kişi').setRequired(true)).addStringOption(o => o.setName('not_').setDescription('Ekstra not').setRequired(false)),
-    new SlashCommandBuilder().setName('anket').setDescription('Gelişmiş butonlu anket başlatır.').addStringOption(o => o.setName('soru').setDescription('Anket sorusu nedir?').setRequired(true)),
-    
-    // YENİ FREELOG SLASH KOMUTU
-    new SlashCommandBuilder().setName('freelog').setDescription('Black Market Free Log menüsünü açar.')
+    new SlashCommandBuilder().setName('anket').setDescription('Gelişmiş butonlu anket başlatır.').addStringOption(o => o.setName('soru').setDescription('Anket sorusu nedir?').setRequired(true))
 ].map(c => c.toJSON());
 
 async function cekilisBitir(channelId, messageId) {
@@ -190,7 +184,7 @@ client.once('ready', async (c) => {
     }
 });
 
-// SUNUCUYA BİRİ KATILDIĞINDA (OTO ROL + BÜYÜK PP'Lİ HOŞ GELDİN MESAJI)
+// SUNUCUYA BİRİ KATILDIĞINDA
 client.on('guildMemberAdd', async (member) => {
     const rol = member.guild.roles.cache.get(UYE_ROL_ID);
     if (rol) {
@@ -210,7 +204,7 @@ client.on('guildMemberAdd', async (member) => {
     }
 });
 
-// SUNUCUDAN BİRİ AYRILDIĞINDA (BÜYÜK PP'Lİ BAYBAY MESAJI)
+// SUNUCUDAN BİRİ AYRILDIĞINDA
 client.on('guildMemberRemove', async (member) => {
     const kanal = member.guild.channels.cache.get(GELEN_GIDEN_KANAL_ID);
     if (kanal) {
@@ -228,11 +222,6 @@ client.on('guildMemberRemove', async (member) => {
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
         
-        // FREELOG SLASH KOMUT TETİKLEYİCİSİ
-        if (interaction.commandName === 'freelog') {
-            return freelogModul.sendFreeLogMenu(interaction);
-        }
-
         // DROP KOMUTU
         if (interaction.commandName === 'drop') {
             const gorunenOdul = interaction.options.getString('gorunen');
@@ -300,7 +289,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
-        // VOUCH (Sıfırdan Başlayan Sayaç Entegre Edildi)
+        // VOUCH
         if (interaction.commandName === 'vouch') {
             const yetkili = interaction.options.getUser('veren');
             const alanUye = interaction.options.getUser('alan');
@@ -311,7 +300,6 @@ client.on('interactionCreate', async interaction => {
             const guildMember = await interaction.guild.members.fetch(yetkili.id);
             if (!guildMember.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Sadece **Yetkili Ekibi** rolündekilere vouch atılabilir.', flags: MessageFlags.Ephemeral });
             
-            // Eğer veri tabanında daha önce kaydı yoksa sıfırdan başlat
             const mevcutVouch = await db.get(`vouch_${yetkili.id}`);
             if (mevcutVouch === null || mevcutVouch === undefined) {
                 await db.set(`vouch_${yetkili.id}`, 0);
@@ -344,18 +332,18 @@ client.on('interactionCreate', async interaction => {
 
         // YETKİLİ PUAN
         if (interaction.commandName === 'yetkilipuan') {
-            const hedef = interaction.options.getUser('kullanici') || interaction.user;
-            const vSayi = await db.get(`vouch_${hedef.id}`) || 0;
-            const lSayi = await db.get(`legit_${hedef.id}`) || 0;
+            const hedon = interaction.options.getUser('kullanici') || interaction.user;
+            const vSayi = await db.get(`vouch_${hedon.id}`) || 0;
+            const lSayi = await db.get(`legit_${hedon.id}`) || 0;
             
             const embed = new EmbedBuilder()
-                .setTitle(`📊 ${hedef.username} - İstatistikleri`)
+                .setTitle(`📊 ${hedon.username} - İstatistikleri`)
                 .setColor('#2F3136')
                 .addFields(
                     { name: '💜 Vouch Puanı', value: `\`${vSayi}\` adet`, inline: true }, 
                     { name: '✅ Legit Puanı', value: `\`${lSayi}\` adet`, inline: true }
                 )
-                .setThumbnail(hedef.displayAvatarURL());
+                .setThumbnail(hedon.displayAvatarURL());
             
             await interaction.reply({ embeds: [embed] });
         }
@@ -547,12 +535,6 @@ client.on('interactionCreate', async interaction => {
 
     // BUTTONS YAKALAYICI
     else if (interaction.isButton()) {
-        
-        // ⚠️ ENTEGRASYON: FREELOG BUTON TETİKLEMESİNİ YAKALIYORUZ
-        if (interaction.customId === 'btn_free_log_cek') {
-            return freelogModul.handleFreeLog(interaction);
-        }
-
         if (interaction.customId === 'ticket_kapat') {
             await interaction.reply({ content: '🔒 Bu bilet kanalı 5 saniye içinde siliniyor...' });
             setTimeout(async () => {
@@ -615,19 +597,20 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // REROLL
+        // REROLL SİSTEMİ (Yarım kalan mantık tamamlandı)
         if (interaction.customId.startsWith('cekilis_reroll_')) {
-            if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
-                return interaction.reply({ content: '❌ **Yetki Yetersiz:** Bu butonu sadece yetkili ekibi kullanabilir.', flags: MessageFlags.Ephemeral });
-            }
-
             const messageId = interaction.customId.replace('cekilis_reroll_', '');
             const veri = await db.get(`cekilis_${messageId}`);
-            if (!veri) return interaction.reply({ content: '❌ Çekiliş verisi bulunamadı.', flags: MessageFlags.Ephemeral });
-            
-            await db.set(`cekilis_${messageId}.bitti', false);
+            if (!veri) return interaction.reply({ content: '❌ Bu çekiliş verisi bulunamadı.', flags: MessageFlags.Ephemeral });
+
+            // Reroll komutunu sadece yetkililer tetikleyebilir
+            if (!interaction.member.roles.cache.has(YETKILI_ROL_ID) && !interaction.member.permissions.has('Administrator')) {
+                return interaction.reply({ content: '❌ Bu çekilişi sadece yetkililer yeniden çekebilir!', flags: MessageFlags.Ephemeral });
+            }
+
             await interaction.reply({ content: '🔄 Çekiliş yeniden çekiliyor...', flags: MessageFlags.Ephemeral });
-            await cekilisBitir(interaction.channelId, messageId);
+            await db.set(`cekilis_${messageId}.bitti`, false);
+            await cekilisBitir(interaction.channel.id, messageId);
         }
     }
 });
