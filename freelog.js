@@ -1,4 +1,4 @@
-const { ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const { QuickDB } = require('quick.db');
 const db = new QuickDB();
 
@@ -36,7 +36,7 @@ async function rastgeleBenzersizHesap(kategori) {
     return uretilenHesap;
 }
 
-// 2. Menü Oluşturucu
+// 2. Butonlu Arayüz Oluşturucu (Kurulum Komutu)
 async function sendFreeLogMenu(interaction) {
     const canSetup = interaction.member.roles.cache.some(r => KOMUTU_KULLANACAK_ROLLER.includes(r.id));
     if (!canSetup) {
@@ -46,46 +46,50 @@ async function sendFreeLogMenu(interaction) {
         });
     }
 
+    // Şık ve uzunlama durması için geniş bir Embed hazırlıyoruz
+    const embed = new EmbedBuilder()
+        .setTitle('⚫ Black Market • Free Log Sistemi')
+        .setDescription('Sahip olduğun role uygun şans butonuna tıkla, sistemden üretilen benzersiz hesabın anında DM kutuna gönderilsin!')
+        .addFields(
+            { name: '🚀 Booster Şansı', value: '`Stok: 954` | `Çıkma Şansı: %99` 🔥', inline: false },
+            { name: '💎 VIP Şansı', value: '`Stok: 512` | `Çıkma Şansı: %75` ✨', inline: false },
+            { name: '🎟️ Invite+ Şansı', value: '`Stok: 142` | `Çıkma Şansı: %40` 📉', inline: false }
+        )
+        .setColor('#000000') // Minimalist siyah arka plan rengi
+        .setFooter({ text: 'Black Market • Durumunda .gg/dropzonetr bulunmalıdır.' })
+        .setTimestamp();
+
+    // Büyük ve şık butonlar oluşturuyoruz
     const row = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-            .setCustomId('free_log_menu')
-            .setPlaceholder('Sahip olduğun role uygun şansı seç...')
-            .addOptions([
-                { 
-                    label: 'Booster Şansı (En Yüksek)', 
-                    value: 'booster_sansi', 
-                    description: 'Stok: 954 Adet | Çıkma Şansı: %99 🔥',
-                    emoji: '🚀' 
-                },
-                { 
-                    label: 'VIP Şansı (Orta)', 
-                    value: 'vip_sansi', 
-                    description: 'Stok: 512 Adet | Çıkma Şansı: %75 ✨',
-                    emoji: '💎' 
-                },
-                { 
-                    label: 'Invite+ Şansı (En Düşük)', 
-                    value: 'invite_sansi', 
-                    description: 'Stok: 142 Adet | Çıkma Şansı: %40 📉',
-                    emoji: '🎟️' 
-                }
-            ])
+        new ButtonBuilder()
+            .setCustomId('btn_booster_sansi')
+            .setLabel('🚀 Booster Şansı (En Yüksek)')
+            .setStyle(ButtonStyle.Success), // Yeşil buton
+        new ButtonBuilder()
+            .setCustomId('btn_vip_sansi')
+            .setLabel('💎 VIP Şansı (Orta)')
+            .setStyle(ButtonStyle.Primary), // Mavi buton
+        new ButtonBuilder()
+            .setCustomId('btn_invite_sansi')
+            .setLabel('🎟️ Invite+ Şansı (En Düşük)')
+            .setStyle(ButtonStyle.Secondary) // Gri buton
     );
 
     await interaction.reply({ 
-        content: '⚫ **Black Market • Free Log Menüsü**\nSahip olduğun role uygun şans seçeneğine tıkla, benzersiz hesabın anında DM kutuna düşsün!', 
-        components: [row]
+        embeds: [embed], 
+        components: [row] 
     });
 }
 
-// 3. İşlem Yapıcı (Zaman aşımı hatası giderildi)
+// 3. Buton İşlemlerini Yöneten Kısım
 async function handleFreeLog(interaction) {
-    if (interaction.customId === 'free_log_menu') {
+    // Sadece bizim butonlarımıza tıklandığında çalış
+    if (interaction.isButton() && interaction.customId.startsWith('btn_')) {
         
-        // Discord'a "işlem yapıyorum, bekle" diyoruz (3 saniyelik sınırı 15 dakikaya çıkartır)
+        // Hata vermemesi için hemen deferReply atıyoruz
         await interaction.deferReply({ ephemeral: true });
 
-        const secilenDeger = interaction.values[0];
+        const butonId = interaction.customId;
         const userRoles = interaction.member.roles.cache;
         
         let gerekliRolID = "";
@@ -93,17 +97,17 @@ async function handleFreeLog(interaction) {
         let minStok = 0;
         let maxStok = 0;
 
-        if (secilenDeger === 'booster_sansi') {
+        if (butonId === 'btn_booster_sansi') {
             gerekliRolID = ROLLER.BOOSTER;
             aktifRolIsmi = "Booster";
             minStok = 700;
             maxStok = 999;
-        } else if (secilenDeger === 'vip_sansi') {
+        } else if (butonId === 'btn_vip_sansi') {
             gerekliRolID = ROLLER.VIP;
             aktifRolIsmi = "VIP";
             minStok = 400;
             maxStok = 699;
-        } else if (secilenDeger === 'invite_sansi') {
+        } else if (butonId === 'btn_invite_sansi') {
             gerekliRolID = ROLLER.INVITE;
             aktifRolIsmi = "Invite+";
             minStok = 100;
@@ -113,7 +117,7 @@ async function handleFreeLog(interaction) {
         // Rol Kontrolü
         if (!userRoles.has(gerekliRolID)) {
             return interaction.editReply({ 
-                content: `❌ Seçtiğin **${aktifRolIsmi}** şansını kullanabilmek için o role sahip olmalısın!`
+                content: `❌ Tıkladığın **${aktifRolIsmi}** özel butonunu kullanabilmek için sunucuda o role sahip olmalısın!`
             });
         }
 
@@ -137,9 +141,9 @@ async function handleFreeLog(interaction) {
             // DM Gönderimi
             await interaction.user.send(`🎉 **Black Market - Free Log Teslimatı**\n\n**Kategori:** ${rastgeleKategori.toUpperCase()}\n**Mevcut Rol Şansınız:** \`${aktifRolIsmi}\` 🚀\n**Kalan Kategori Stoğu:** ${stokMiktari} Adet\n**Hesap:** \`${hesap}\`\n\n*İyi kullanımlar!*`);
             
-            // Gizli Onay (deferReply kullandığımız için editReply yapıyoruz)
+            // Kullanıcıya gizli bildirim
             await interaction.editReply({ 
-                content: `✅ **${rastgeleKategori.toUpperCase()}** kategorisinden bir hesap **${aktifRolIsmi}** özel şansı ile DM kutuna gönderildi!`
+                content: `✅ **${rastgeleKategori.toUpperCase()}** kategorisinden bir hesap **${aktifRolIsmi}** şansıyla üretilerek DM kutuna başarıyla gönderildi!`
             });
 
             // HESAP ALANLAR KANALINA LOG GÖNDERME
@@ -147,14 +151,14 @@ async function handleFreeLog(interaction) {
             if (logKanal) {
                 const logEmbed = new EmbedBuilder()
                     .setTitle('📥 Free Log Çekildi!')
-                    .setDescription(`Bir kullanıcı sistemden ücretsiz hesap teslim aldı.`)
+                    .setDescription(`Bir kullanıcı sistemden buton kullanarak hesap teslim aldı.`)
                     .addFields(
                         { name: '👤 Kullanıcı', value: `${interaction.user} (\`${interaction.user.id}\`)`, inline: true },
                         { name: '🎮 Kategori', value: `\`${rastgeleKategori.toUpperCase()}\``, inline: true },
-                        { name: '⚡ Kullanılan Rol Şansı', value: `\`${aktifRolIsmi}\``, inline: true },
+                        { name: '⚡ Kullanılan Buton Şansı', value: `\`${aktifRolIsmi}\``, inline: true },
                         { name: '🔐 Alınan Hesap', value: `\`\`\`${hesap}\`\`\``, inline: false }
                     )
-                    .setColor('#00FFAA')
+                    .setColor('#000000')
                     .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
                     .setFooter({ text: 'Black Market • Free Log Sistemi' })
                     .setTimestamp();
