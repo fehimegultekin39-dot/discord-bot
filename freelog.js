@@ -1,4 +1,3 @@
-
 const { ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
 
 // Yetkili Rol ID'lerin
@@ -13,6 +12,15 @@ function rastgeleHesap(kategori) {
 
 // 2. Menü Oluşturucu
 async function sendFreeLogMenu(interaction) {
+    // Rol Kontrolünü menü açılırken yapıyoruz ki yetkisiz kimse menüyü göremesin
+    const hasRole = interaction.member.roles.cache.some(r => IZINLI_ROLLER.includes(r.id));
+    if (!hasRole) {
+        return interaction.reply({ 
+            content: '❌ Bu menüyü kullanmak için **Invite+, VIP veya Booster** rollerinden birine sahip olmalısın!', 
+            ephemeral: true 
+        });
+    }
+
     const row = new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
             .setCustomId('free_log_menu')
@@ -37,17 +45,8 @@ async function sendFreeLogMenu(interaction) {
     });
 }
 
-// 3. İşlem Yapıcı (Rol kontrolü ve DM gönderimi)
+// 3. İşlem Yapıcı (DM gönderimi)
 async function handleFreeLog(interaction) {
-    // Rol Kontrolü
-    const hasRole = interaction.member.roles.cache.some(r => IZINLI_ROLLER.includes(r.id));
-    if (!hasRole) {
-        return interaction.reply({ 
-            content: '❌ Bu menüyü kullanmak için **Invite+, VIP veya Booster** rollerinden birine sahip olmalısın!', 
-            ephemeral: true 
-        });
-    }
-
     if (interaction.customId === 'free_log_menu') {
         const kategori = interaction.values[0];
         const hesap = rastgeleHesap(kategori);
@@ -55,12 +54,15 @@ async function handleFreeLog(interaction) {
 
         try {
             await interaction.user.send(`🎉 **Black Market - Free Log Teslimatı**\n\n**Kategori:** ${kategori.toUpperCase()}\n**Stok:** ${stokMiktari} Adet\n**Hesap:** \`${hesap}\`\n\n*İyi kullanımlar!*`);
-            await interaction.reply({ 
+            
+            // Burayı interaction.update yaptık ki Discord 'ikinci kez cevap veriyorsun' diye çökmesin
+            await interaction.update({ 
                 content: `✅ **${kategori.toUpperCase()}** kategorisinden **${stokMiktari}** stok arasından bir hesap DM kutuna gönderildi!`, 
+                components: [], // Menüyü ekrandan kaldırır
                 ephemeral: true 
             });
         } catch (e) {
-            await interaction.reply({ 
+            await interaction.followUp({ 
                 content: '❌ DM kutun kapalı olduğu için hesabı gönderemedim!', 
                 ephemeral: true 
             });
