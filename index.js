@@ -5,6 +5,9 @@ const db = new QuickDB();
 const express = require('express');
 const ms = require('ms');
 
+// FREELOG MODÜLÜNÜ BAĞLIYORUZ
+const freelogModul = require('./freelog.js');
+
 const app = express();
 app.get('/', (req, res) => res.send('Bot 7/24 Aktif!'));
 app.listen(3000);
@@ -69,7 +72,10 @@ const commands = [
     new SlashCommandBuilder().setName('mute').setDescription('Kullanıcıyi susturur.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)).addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)),
     new SlashCommandBuilder().setName('unmute').setDescription('Susturmayı kaldırır.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)),
     new SlashCommandBuilder().setName('legit').setDescription('Legit onayı oluşturur.').addAttachmentOption(o => o.setName('image').setDescription('Kanıt görseli').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Verilen ödül').setRequired(true)).addUserOption(o => o.setName('alan').setDescription('Ödülü alan kişi').setRequired(true)).addStringOption(o => o.setName('not_').setDescription('Ekstra not').setRequired(false)),
-    new SlashCommandBuilder().setName('anket').setDescription('Gelişmiş butonlu anket başlatır.').addStringOption(o => o.setName('soru').setDescription('Anket sorusu nedir?').setRequired(true))
+    new SlashCommandBuilder().setName('anket').setDescription('Gelişmiş butonlu anket başlatır.').addStringOption(o => o.setName('soru').setDescription('Anket sorusu nedir?').setRequired(true)),
+    
+    // YENİ FREELOG SLASH KOMUTU
+    new SlashCommandBuilder().setName('freelog').setDescription('Black Market Free Log menüsünü açar.')
 ].map(c => c.toJSON());
 
 
@@ -184,20 +190,18 @@ client.once('ready', async (c) => {
 
 // SUNUCUYA BİRİ KATILDIĞINDA (OTO ROL + BÜYÜK PP'Lİ HOŞ GELDİN MESAJI)
 client.on('guildMemberAdd', async (member) => {
-    // Otomatik Rol Verme Bölümü
     const rol = member.guild.roles.cache.get(UYE_ROL_ID);
     if (rol) {
         await member.roles.add(rol).catch(err => console.error("Oto-rol verilemedi:", err));
     }
 
-    // Gelen Log Kanalına Mesaj Gönderme Bölümü
     const kanal = member.guild.channels.cache.get(GELEN_GIDEN_KANAL_ID);
     if (kanal) {
         const hosgeldinEmbed = new EmbedBuilder()
             .setTitle('🥳 Sunucumuza Biri Katıldı!')
             .setDescription(`💜 **Hoş geldin** ${member}! Seninle birlikte tam **${member.guild.memberCount}** kişi olduk. İçerisi şimdi daha da şenlendi! ✨`)
             .setColor('#00FF00')
-            .setImage(member.user.displayAvatarURL({ dynamic: true, size: 1024 })) // Profil fotoğrafını kocaman gösterir
+            .setImage(member.user.displayAvatarURL({ dynamic: true, size: 1024 })) 
             .setTimestamp();
         
         await kanal.send({ embeds: [hosgeldinEmbed] }).catch(err => console.error("Gelen mesajı atılamadı:", err));
@@ -213,7 +217,7 @@ client.on('guildMemberRemove', async (member) => {
             .setTitle('👋 Biri Aramızdan Ayrıldı...')
             .setDescription(`❌ **Baybay** **${member.user.tag}**... Sunucudan çıkış yaptı. Geride **${member.guild.memberCount}** kişi kaldık, özleneceksin!`)
             .setColor('#FF0000')
-            .setImage(member.user.displayAvatarURL({ dynamic: true, size: 1024 })) // Profil fotoğrafını kocaman gösterir
+            .setImage(member.user.displayAvatarURL({ dynamic: true, size: 1024 })) 
             .setTimestamp();
         
         await kanal.send({ embeds: [gorusuruzEmbed] }).catch(err => console.error("Giden mesajı atılamadı:", err));
@@ -224,6 +228,11 @@ client.on('guildMemberRemove', async (member) => {
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
         
+        // FREELOG SLASH KOMUT TETİKLEYİCİSİ
+        if (interaction.commandName === 'freelog') {
+            return freelogModul.sendFreeLogMenu(interaction);
+        }
+
         // DROP KOMUTU
         if (interaction.commandName === 'drop') {
             const gorunenOdul = interaction.options.getString('gorunen');
@@ -231,7 +240,7 @@ client.on('interactionCreate', async interaction => {
             const gorselDosyası = interaction.options.getAttachment('gorsel_dosyasi');
             
             if (!gizliOdul && !gorselDosyası) {
-                return interaction.reply({ content: '❌ **Hata:** Ya `teslim_edilecek_odul` kısmına yazılı bilgi girmeli ya da `gorsel_dosyasi` kısmına bir ödül fotoğrafı yüklemelisiniz!', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ **Hata:** Ya `teslim_edilecek_odul` Medical bilgi girmeli ya da `gorsel_dosyasi` kısmına bir ödül fotoğrafı yüklemelisiniz!', flags: MessageFlags.Ephemeral });
             }
 
             const gorselUrl = gorselDosyası ? gorselDosyası.url : null;
@@ -486,8 +495,14 @@ client.on('interactionCreate', async interaction => {
     }
 
 
-    // SELECT MENUS
+    // SELECT MENUS YAKALAYICI
     else if (interaction.isStringSelectMenu()) {
+        
+        // FREELOG MENÜ SEÇİMİ BURADA YAKALANIYOR
+        if (interaction.customId === 'free_log_menu') {
+            return freelogModul.handleFreeLog(interaction);
+        }
+
         if (interaction.customId === 'ticket_secim') {
             const secim = interaction.values[0];
             await interaction.reply({ content: '🔄 Destek talebiniz oluşturuluyor, lütfen bekleyin...', flags: MessageFlags.Ephemeral });
@@ -540,7 +555,7 @@ client.on('interactionCreate', async interaction => {
     }
 
 
-    // BUTTONS
+    // BUTTONS YAKALAYICI
     else if (interaction.isButton()) {
         if (interaction.customId === 'ticket_kapat') {
             await interaction.reply({ content: '🔒 Bu bilet kanalı 5 saniye içinde siliniyor...' });
