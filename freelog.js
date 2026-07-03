@@ -1,221 +1,201 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const { QuickDB } = require('quick.db');
 const db = new QuickDB();
 
-// ==================== AYARLAR TABLOSU ====================
-// Menüyü kanala kurmaya yetkili Kurucu/Yönetici Rol ID'si
-const KOMUTU_KULLANACAK_ROLLER = ['1520474155210768424']; 
-
-// Rol tanımlamaları ve ID'leri
-const ROLLER = {
-    BOOSTER: '1520486297527910420',
-    VIP: '1521129242094473337',
-    INVITE: '1521129473863450664'
-};
-
-// Hesap Alanlar Log Kanal ID
-const LOG_KANAL_ID = '1520499241062109405';
-
-// Şart koşulan durum kelimesi
-const ZORUNLU_DURUM = '.gg/dropzonetr';
-
-// Günlük limit sınırı (1 kullanıcının 24 saatte alabileceği maks hesap)
-const GUNLUK_LIMIT = 1; 
-// =========================================================
+// Yetkili/Admin Rol ID'si (Buraya stok ekleyebilecek rolün ID'sini yazabilirsin)
+const ADMIN_ROLE_ID = "YETKILI_ROL_ID_BURAYA"; 
 
 /**
- * Karışık, gerçekçi benzersiz hesap üretici fonksiyon.
- * Havuz mantığıyla veritabanı kontrolü gerçekleştirir.
- */
-async function rastgeleBenzersizHesap(kategori) {
-    const domainler = ["@gmail.com", "@outlook.com", "@yandex.com", "@hotmail.com"];
-    const karakterler = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    
-    let hesapBulundu = false;
-    let uretilenHesap = "";
-    let denemeSayisi = 0;
-
-    while (!hesapBulundu && denemeSayisi < 50) {
-        const rastgeleSayi = Math.floor(Math.random() * 899999) + 100000;
-        const secilenDomain = domainler[Math.floor(Math.random() * domainler.length)];
-        
-        let sifreEki = "";
-        for (let i = 0; i < 6; i++) {
-            sifreEki += karakterler.charAt(Math.floor(Math.random() * karakterler.length));
-        }
-
-        uretilenHesap = `${kategori.toLowerCase()}_user${rastgeleSayi}${secilenDomain}:Bm${sifreEki}`;
-        
-        const dahaOnceVerildiMi = await db.get(`verilen_hesap_${uretilenHesap}`);
-        if (!dahaOnceVerildiMi) {
-            hesapBulundu = true;
-            await db.set(`verilen_hesap_${uretilenHesap}`, true);
-        }
-        denemeSayisi++;
-    }
-    return uretilenHesap;
-}
-
-/**
- * Menüyü yetkili kanala gönderen ana embed kurulumu
+ * Kullanıcıların göreceği ana Free Log Menüsünü kanala gönderir.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction 
  */
 async function sendFreeLogMenu(interaction) {
-    const canSetup = interaction.member.roles.cache.some(r => KOMUTU_KULLANACAK_ROLLER.includes(r.id));
-    if (!canSetup) {
-        return interaction.reply({ 
-            content: '❌ Bu menü kurulum komutunu sadece gerekli yetkiye sahip kişiler kullanabilir!', 
-            ephemeral: true 
+    // Kategorileri ve mevcut anlık stok durumlarını çekmek için hazırlık
+    const kategoriler = [
+        { label: 'Discord Token Log', value: 'log_discord', emoji: '🔵', desc: 'Güncel Discord token ve hesap logları.' },
+        { label: 'Steam Account Log', value: 'log_steam', emoji: '💨', desc: 'Steam hesap, oyun ve envanter logları.' },
+        { label: 'Valorant & Riot Log', value: 'log_valorant', emoji: '🔴', desc: 'Valorant/Riot Games güncel ranked logları.' },
+        { label: 'Netflix & Premium Log', value: 'log_premium', emoji: '🍿', desc: 'Netflix, Spotify ve Premium platform logları.' },
+        { label: 'Crypto & Wallet Log', value: 'log_crypto', emoji: '🪙', desc: 'Kripto cüzdan, metamask ve borsa logları.' }
+    ];
+
+    const menuOptions = [];
+
+    for (const kat of kategoriler) {
+        // Her kategorinin veritabanındaki stok dizisini alıyoruz
+        const stoklar = await db.get(`stok_${kat.value}`) || [];
+        const stokSayisi = stoklar.length;
+
+        menuOptions.push({
+            label: kat.label,
+            value: kat.value,
+            emoji: kat.emoji,
+            description: `${kat.desc} (Stok: ${stokSayisi})`
         });
     }
 
-    const embed = new EmbedBuilder()
-        .setTitle('⚫ Black Market • Free Log Sistemi')
-        .setDescription(`Aşağıdaki buton vasıtasıyla profil durum şartını yerine getiren tüm üyelerimiz ücretsiz hesap havuzundan yararlanabilir.\n\n**⚠️ Zorunlu Şart:**\nProfil durumunuzda (Custom Status) mutlak suretle \`${ZORUNLU_DURUM}\` yazılı olmalıdır!`)
-        .addFields(
-            { name: '🚀 Booster Ayrıcalığı', value: '`Stok Miktarı: 954` | `Çıkma Şansı: %99` 🔥', inline: false },
-            { name: '💎 VIP Ayrıcalığı', value: '`Stok Miktarı: 512` | `Çıkma Şansı: %75` ✨', inline: false },
-            { name: '🎟️ Invite+ Ayrıcalığı', value: '`Stok Miktarı: 142` | `Çıkma Şansı: %40` 📉', inline: false }
-        )
-        .setColor('#000000')
-        .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
-        .setFooter({ text: 'Black Market • Sistem rollerinizi otomatik analiz eder.' })
-        .setTimestamp();
-
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setCustomId('btn_free_log_cek')
-            .setLabel('🎁 Free Log Çek')
-            .setStyle(ButtonStyle.Success) // Geniş yeşil buton
+        new StringSelectMenuBuilder()
+            .setCustomId('free_log_menu')
+            .setPlaceholder('Almak istediğiniz Free Log kategorisini seçin')
+            .addOptions(menuOptions)
     );
 
-    await interaction.reply({ 
-        embeds: [embed], 
-        components: [row] 
-    });
+    const embed = new EmbedBuilder()
+        .setTitle('🛒 Black Market — Ücretsiz Log Paneli')
+        .setDescription('Aşağıdaki menüyü kullanarak anlık güncellenen sistem loglarından tamamen ücretsiz bir şekilde yararlanabilirsiniz.\n\n⚡ **Sistem Nasıl Çalışır?**\nKategoriyi seçtikten sonra sizin için özel bir buton üretilir. Butona ilk tıklayan kişi stoktaki güncel logu kapar ve log otomatik olarak sistemden silinir!')
+        .setColor('#1e1f22')
+        .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
+        .setFooter({ text: 'Black Market • Hızlı ve Otomatik Teslimat', iconURL: interaction.client.user.displayAvatarURL() })
+        .setTimestamp();
+
+    await interaction.reply({ embeds: [embed], components: [row] });
 }
 
 /**
- * Buton tetiklendiğinde çalışan, rol hiyerarşisi analiz motoru.
+ * Menü seçimlerini, log çekme işlemlerini ve admin stok yönetimini işler.
+ * @param {import('discord.js').Interaction} interaction 
  */
 async function handleFreeLog(interaction) {
-    // Sadece hedef buton algılandığında çalış
-    if (!interaction.isButton() || interaction.customId !== 'btn_free_log_cek') return;
     
-    // Uygulama yanıt vermedi hatasını EN BAŞTA önlemek adına askıya alıyoruz
-    await interaction.deferReply({ ephemeral: true }).catch(() => {});
-
-    const userId = interaction.user.id;
-    
-    // Sunucudan üyenin en güncel verilerini presence (durum) dahil çekiyoruz
-    const member = await interaction.guild.members.fetch({ user: userId, withPresences: true }).catch(() => null);
-    if (!member) {
-        return interaction.editReply({ content: '❌ Sunucu içi üye bilgilerinize ulaşılamadı. Lütfen tekrar deneyin.' });
-    }
-
-    const userRoles = member.roles.cache;
-    let aktifRolIsmi = "";
-    let minStok = 0;
-    let maxStok = 0;
-
-    // 1. Otomatik Rol Analizi (Hiyerarşik Kontrol)
-    if (userRoles.has(ROLLER.BOOSTER)) {
-        aktifRolIsmi = "Booster";
-        minStok = 700;
-        maxStok = 954;
-    } else if (userRoles.has(ROLLER.VIP)) {
-        aktifRolIsmi = "VIP";
-        minStok = 300;
-        maxStok = 512;
-    } else if (userRoles.has(ROLLER.INVITE)) {
-        aktifRolIsmi = "Invite+";
-        minStok = 50;
-        maxStok = 142;
-    } else {
-        return interaction.editReply({ 
-            content: '❌ **Yetki Yetersiz:** Free log çekebilmek için sunucumuzda **Invite+, VIP veya Booster** rollerinden en az birine sahip olmanız gerekmektedir!' 
-        });
-    }
-
-    // 2. Cooldown / Günlük Sınır Kontrolü
-    if (GUNLUK_LIMIT > 0) {
-        const bugun = new Date().toISOString().slice(0, 10);
-        const kullanimSayisi = await db.get(`cooldown_${userId}_${bugun}`) || 0;
+    // ==========================================
+    // 1. DURUM: AÇILIR MENÜDEN KATEGORİ SEÇİLMESİ
+    // ==========================================
+    if (interaction.isStringSelectMenu() && interaction.customId === 'free_log_menu') {
+        const secilenKategori = interaction.values[0];
+        const stoklar = await db.get(`stok_${secilenKategori}`) || [];
         
-        if (kullanimSayisi >= GUNLUK_LIMIT) {
-            return interaction.editReply({
-                content: `❌ **Günlük Sınır:** Bu sistemden 24 saat içerisinde sadece **${GUNLUK_LIMIT}** kez hesap çekebilirsiniz. Lütfen yarın tekrar deneyin!`
+        // Seçilen seçeneğin ismini bulma
+        const option = interaction.component.options.find(o => o.value === secilenKategori);
+        const kategoriIsmi = option ? option.label : 'Bilinmeyen Kategori';
+
+        if (stoklar.length === 0) {
+            return interaction.reply({ 
+                content: `❌ Üzgünüm, **${kategoriIsmi}** kategorisinde şu an hiç stok bulunmuyor! Lütfen daha sonra tekrar kontrol edin veya adminlerin yüklemesini bekleyin.`, 
+                flags: MessageFlags.Ephemeral 
+            });
+        }
+
+        // Güvenlik ve çakışmaları önlemek için benzersiz bir işlem ID'si
+        const islemId = Math.random().toString(36).substring(2, 9);
+        
+        // Geçici oturumu DB'ye kaydediyoruz
+        await db.set(`oturum_${islemId}`, {
+            kategori: secilenKategori,
+            kategoriIsmi: kategoriIsmi,
+            olusturan: interaction.user.id
+        });
+
+        const hazirEmbed = new EmbedBuilder()
+            .setTitle(`📂 ${kategoriIsmi} Kategorisi Hazır`)
+            .setDescription(`Seçtiğiniz kategori için başarıyla bir dağıtım oturumu oluşturuldu.\n\n🔒 **Log verisini kapmak ve doğrudan DM kutunuza almak için aşağıdaki butona tıklayın!**\n*(İlk tıklayan kazanır)*`)
+            .setColor('#5865f2')
+            .addFields({ name: 'Mevcut Toplam Stok', value: `\`${stoklar.length} Adet\``, inline: true })
+            .setFooter({ text: 'Bu buton tek kullanımlıktır.' });
+
+        const btnRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`btn_log_kap_${islemId}`)
+                .setLabel('Logu Kap (DM Gönder)')
+                .setStyle(ButtonStyle.Success)
+                .setEmoji('⚡')
+        );
+
+        // Mesajı butonlu hale getiriyoruz
+        await interaction.update({ embeds: [hazirEmbed], components: [btnRow] });
+    }
+
+    // ==========================================
+    // 2. DURUM: "LOGU KAP" BUTONUNA TIKLANMASI
+    // ==========================================
+    else if (interaction.isButton() && interaction.customId.startsWith('btn_log_kap_')) {
+        const islemId = interaction.customId.replace('btn_log_kap_', '');
+        const oturum = await db.get(`oturum_${islemId}`);
+
+        if (!oturum) {
+            return interaction.reply({ content: '❌ Bu işlemin süresi dolmuş veya geçersiz.', flags: MessageFlags.Ephemeral });
+        }
+
+        // Kilit mekanizması: Aynı anda basılmaları engellemek için oturumu hemen siliyoruz
+        await db.delete(`oturum_${islemId}`);
+
+        // Stok dizisini çekiyoruz
+        let stoklar = await db.get(`stok_${oturum.kategori}`) || [];
+
+        if (stoklar.length === 0) {
+            return interaction.reply({ content: '❌ Tüh! Başka bir kullanıcı sizden saliseler önce davranıp son logu kaptı.', flags: MessageFlags.Ephemeral });
+        }
+
+        // Dizinin ilk elemanını (en eski eklenen logu) kuyruktan çıkartıyoruz (FIFO mantığı)
+        const teslimEdilenLog = stoklar.shift();
+        
+        // Kalan stoku güncelliyoruz
+        await db.set(`stok_${oturum.kategori}`, stoklar);
+
+        try {
+            // Kullanıcıya DM yoluyla logu iletiyoruz
+            const dmEmbed = new EmbedBuilder()
+                .setTitle('🎉 Log Başarıyla Kaptın!')
+                .setDescription(`**Kategori:** \`${oturum.kategoriIsmi}\`\n\n**Log Bilgileri:**\n\`\`\`text\n${teslimEdilenLog}\n\`\`\``)
+                .setColor('#57f287')
+                .setFooter({ text: 'Black Market • İyi kullanımlar!' })
+                .setTimestamp();
+
+            await interaction.user.send({ embeds: [dmEmbed] });
+
+            // Kanaldaki herkese açık mesajı güncelliyoruz
+            const bittiEmbed = new EmbedBuilder()
+                .setTitle('✅ STOKTAN BİR LOG KAPILDI!')
+                .setDescription(`🏆 ${interaction.user} kullanıcısı **${oturum.kategoriIsmi}** kategorisinden bir log kaptı!\n\n📩 Log verisi güvenli bir şekilde kullanıcının **DM kutusuna gönderildi.**\n\n📉 Kalan Kategori Stoğu: \`${stoklar.length}\``)
+                .setColor('#232428')
+                .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
+                .setTimestamp();
+
+            await interaction.update({ embeds: [bittiEmbed], components: [] });
+
+        } catch (error) {
+            // Eğer kullanıcının DM'i kapalıysa log ziyan olmasın diye stoka geri ekliyoruz
+            stoklar.unshift(teslimEdilenLog);
+            await db.set(`stok_${oturum.kategori}`, stoklar);
+
+            // Oturumu da tekrar aktif ediyoruz ki başkası alabilsin veya kullanıcı DM açıp tekrar denesin
+            await db.set(`oturum_${islemId}`, oturum);
+
+            return interaction.reply({ 
+                content: '❌ **Hata:** Discord DM (Özel Mesaj) kutunuz kapalı olduğu için bot size logu teslim edemedi! Lütfen gizlilik ayarlarınızdan DM kutunuzu açıp butona tekrar basmayı deneyin.', 
+                flags: MessageFlags.Ephemeral 
             });
         }
     }
-
-    // 3. Özel Profil Durumu (Custom Status) Doğrulaması
-    const customStatus = member.presence?.activities?.find(a => a.type === 4);
-    if (!customStatus || !customStatus.state || !customStatus.state.includes(ZORUNLU_DURUM)) {
-        return interaction.editReply({
-            content: `❌ **Durum Şartı Sağlanmadı:** Free log alabilmek için profil durumunuza (Custom Status) \`${ZORUNLU_DURUM}\` yazmalısınız!`
-        });
-    }
-
-    // 4. Hesap Seçim ve Stok Simülasyon Aşaması
-    const kategoriler = ['steam', 'valorant', 'minecraft', 'roblox', 'netflix', 'disney'];
-    const rastgeleKategori = kategoriler[Math.floor(Math.random() * kategoriler.length)];
-    
-    const hesap = await rastgeleBenzersizHesap(rastgeleKategori);
-    const anlikStok = Math.floor(Math.random() * (maxStok - minStok + 1) + minStok);
-
-    try {
-        // 5. Kullanıcıya Gizli DM İletimi
-        const dmEmbed = new EmbedBuilder()
-            .setTitle('🎉 Black Market • Free Log Teslimatı')
-            .setDescription(`Sistem üzerindeki mevcut haklarınız doğrulanarak hesabınız başarıyla üretilmiştir.`)
-            .addFields(
-                { name: '🎮 Ürün Kategorisi', value: `\`${rastgeleKategori.toUpperCase()}\``, inline: true },
-                { name: '⚡ Algılanan Rolünüz', value: `\`${aktifRolIsmi}\``, inline: true },
-                { name: '📦 Kalan Kategori Stoğu', value: `\`${anlikStok} Adet\``, inline: true },
-                { name: '🔐 Hesap Bilgileri (Eposta:Şifre)', value: `\`\`\`${hesap}\`\`\``, inline: false }
-            )
-            .setColor('#00FFAA')
-            .setFooter({ text: 'Black Market • İyi kullanımlar diler!' })
-            .setTimestamp();
-
-        await interaction.user.send({ embeds: [dmEmbed] });
-
-        // İşlem başarılıysa veritabanı limit sayacını artırıyoruz
-        if (GUNLUK_LIMIT > 0) {
-            const bugun = new Date().toISOString().slice(0, 10);
-            await db.add(`cooldown_${userId}_${bugun}`, 1);
-        }
-
-        // Kanaldaki etkileşime son başarılı yanıtı ver
-        await interaction.editReply({ 
-            content: `✅ **Başarılı:** **${rastgeleKategori.toUpperCase()}** kategorisindeki hesabınız **${aktifRolIsmi}** şans oranıyla üretilerek DM kutunuza ulaştırıldı!` 
-        });
-
-        // 6. Yetkili Raporlama (Log) Kanal Gönderimi
-        const logKanal = await interaction.guild.channels.fetch(LOG_KANAL_ID).catch(() => null);
-        if (logKanal) {
-            const logEmbed = new EmbedBuilder()
-                .setTitle('📥 Free Log Teslim Edildi')
-                .addFields(
-                    { name: '👤 Alan Kullanıcı', value: `${interaction.user} (\`${userId}\`)`, inline: true },
-                    { name: '🎮 Teslim Kategorisi', value: `\`${rastgeleKategori.toUpperCase()}\``, inline: true },
-                    { name: '⚡ Okunan Rol Şansı', value: `\`${aktifRolIsmi}\``, inline: true },
-                    { name: '🔐 Gönderilen Hesap Verisi', value: `\`\`\`${hesap}\`\`\``, inline: false }
-                )
-                .setColor('#000000')
-                .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
-                .setFooter({ text: 'Black Market • Log Sistemi' })
-                .setTimestamp();
-
-            await logKanal.send({ embeds: [logEmbed] }).catch(() => {});
-        }
-
-    } catch (e) {
-        // DM Kapalıysa yakalanacak hata bloğu
-        await interaction.editReply({ 
-            content: '❌ **DM Kapalı:** Hesabınız hazırlandı fakat özel mesaj kutunuz kapalı olduğu için bota erişim izni verilmedi. Lütfen gizlilik ayarlarınızdan DM kutunuzu açıp tekrar deneyiniz.' 
-        });
-    }
 }
 
-module.exports = { handleFreeLog, sendFreeLogMenu };
+/**
+ * Gelişmiş Özellik: Adminlerin komutla sisteme kolayca toplu log eklemesini sağlayan yardımcı fonksiyon.
+ * Kullanımı (Örn: Slash komutunda): freelogModul.addLogStock(interaction, 'log_discord', 'yeni_token_verisi')
+ */
+async function addLogStock(interaction, kategoriId, logIcerik) {
+    // Admin yetki kontrolü
+    if (!interaction.member.roles.cache.has(ADMIN_ROLE_ID) && !interaction.member.permissions.has('Administrator')) {
+        return interaction.reply({ content: '❌ Bu komutu kullanmak için gerekli yetkiniz bulunmuyor.', flags: MessageFlags.Ephemeral });
+    }
+
+    if (!logIcerik) {
+        return interaction.reply({ content: '❌ Eklemek için geçerli bir log içeriği yazmalısınız.', flags: MessageFlags.Ephemeral });
+    }
+
+    // Mevcut stoku alıp üzerine pushluyoruz
+    const mevcutStok = await db.get(`stok_${kategoriId}`) || [];
+    mevcutStok.push(logIcerik);
+    await db.set(`stok_${kategoriId}`, mevcutStok);
+
+    return interaction.reply({ 
+        content: `✅ Log verisi başarıyla **\`${kategoriId}\`** kategorisi stoklarına eklendi! (Güncel Stok: \`${mevcutStok.length}\`)`, 
+        flags: MessageFlags.Ephemeral 
+    });
+}
+
+module.exports = {
+    sendFreeLogMenu,
+    handleFreeLog,
+    addLogStock
+};
