@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder, StringSelectMenuBuilder, MessageFlags, PermissionsBitField } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder, StringSelectMenuBuilder, MessageFlags, PermissionsBitField, Partials } = require('discord.js');
 const { QuickDB } = require('quick.db');
 const db = new QuickDB();
 const express = require('express');
@@ -21,7 +21,6 @@ const TICKET_KANAL_LINKI = 'https://discord.com/channels/1520473034694066361/152
 const GELEN_GIDEN_KANAL_ID = 'KANAL_ID_BURAYA'; 
 const UYE_ROL_ID = 'UYE_ROL_ID_BURAYA';
 
-
 function parseTurkceSure(sure) {
     return sure
         .toLowerCase()
@@ -33,15 +32,21 @@ function parseTurkceSure(sure) {
         .replace(/gun|gün|g/g, 'd');
 }
 
-
-// Tüm sistemlerin ve gelen-gidenin sorunsuz çalışması için gerekli intent'ler
+// Donma ve Çökme Hatalarını Önleyen Tam Yetkili Intent Yapısı
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds, 
         GatewayIntentBits.GuildMessages, 
         GatewayIntentBits.MessageContent, 
         GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildMembers
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildPresences // ⚠️ FREELOG DURUM KONTROLÜ İÇİN ŞART!
+    ],
+    partials: [
+        Partials.Channel,
+        Partials.Message,
+        Partials.User,
+        Partials.GuildMember
     ]
 });
 
@@ -77,7 +82,6 @@ const commands = [
     // YENİ FREELOG SLASH KOMUTU
     new SlashCommandBuilder().setName('freelog').setDescription('Black Market Free Log menüsünü açar.')
 ].map(c => c.toJSON());
-
 
 async function cekilisBitir(channelId, messageId) {
     const veri = await db.get(`cekilis_${messageId}`);
@@ -151,7 +155,6 @@ async function cekilisBitir(channelId, messageId) {
     await kanal.send(`🎉 **Tebrikler!** ${kazananMention} **kazandı!** 💜`);
 }
 
-
 client.once('ready', async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
@@ -187,7 +190,6 @@ client.once('ready', async (c) => {
     }
 });
 
-
 // SUNUCUYA BİRİ KATILDIĞINDA (OTO ROL + BÜYÜK PP'Lİ HOŞ GELDİN MESAJI)
 client.on('guildMemberAdd', async (member) => {
     const rol = member.guild.roles.cache.get(UYE_ROL_ID);
@@ -208,7 +210,6 @@ client.on('guildMemberAdd', async (member) => {
     }
 });
 
-
 // SUNUCUDAN BİRİ AYRILDIĞINDA (BÜYÜK PP'Lİ BAYBAY MESAJI)
 client.on('guildMemberRemove', async (member) => {
     const kanal = member.guild.channels.cache.get(GELEN_GIDEN_KANAL_ID);
@@ -223,7 +224,6 @@ client.on('guildMemberRemove', async (member) => {
         await kanal.send({ embeds: [gorusuruzEmbed] }).catch(err => console.error("Giden mesajı atılamadı:", err));
     }
 });
-
 
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
@@ -240,7 +240,7 @@ client.on('interactionCreate', async interaction => {
             const gorselDosyası = interaction.options.getAttachment('gorsel_dosyasi');
             
             if (!gizliOdul && !gorselDosyası) {
-                return interaction.reply({ content: '❌ **Hata:** Ya `teslim_edilecek_odul` Medical bilgi girmeli ya da `gorsel_dosyasi` kısmına bir ödül fotoğrafı yüklemelisiniz!', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ **Hata:** Ya `teslim_edilecek_odul` bilgi girmeli ya da `gorsel_dosyasi` kısmına bir ödül fotoğrafı yüklemelisiniz!', flags: MessageFlags.Ephemeral });
             }
 
             const gorselUrl = gorselDosyası ? gorselDosyası.url : null;
@@ -273,7 +273,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
         }
 
-
         // TICKET PANEL
         if (interaction.commandName === 'ticketpanel') {
             const row = new ActionRowBuilder().addComponents(
@@ -288,7 +287,7 @@ client.on('interactionCreate', async interaction => {
                         { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '🔵', description: 'Ekibimize katılmak ve yetkili olmak istiyorsanız başvurun.' },
                         { label: 'Teknik Destek', value: 'teknik_destek', emoji: '🔧', description: 'Yaşadığınız problemlerle ilgili teknik destek talebi oluşturun.' },
                         { label: 'Şikayet & Öneri', value: 'sikayet_oneri', emoji: '📝', description: 'Sunucu içi şikayetlerinizi veya önerilerinizi bize iletin.' },
-                        { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular ogün sorularınız için bu kategoriyi seçin.' }
+                        { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular ve sorularınız için bu kategoriyi seçin.' }
                     ])
             );
 
@@ -301,8 +300,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
-
-        // VOUCH
+        // VOUCH (Sıfırdan Başlayan Sayaç Entegre Edildi)
         if (interaction.commandName === 'vouch') {
             const yetkili = interaction.options.getUser('veren');
             const alanUye = interaction.options.getUser('alan');
@@ -312,6 +310,12 @@ client.on('interactionCreate', async interaction => {
             
             const guildMember = await interaction.guild.members.fetch(yetkili.id);
             if (!guildMember.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Sadece **Yetkili Ekibi** rolündekilere vouch atılabilir.', flags: MessageFlags.Ephemeral });
+            
+            // Eğer veri tabanında daha önce kaydı yoksa sıfırdan başlat
+            const mevcutVouch = await db.get(`vouch_${yetkili.id}`);
+            if (mevcutVouch === null || mevcutVouch === undefined) {
+                await db.set(`vouch_${yetkili.id}`, 0);
+            }
             
             await db.add(`vouch_${yetkili.id}`, 1);
             const toplam = await db.get(`vouch_${yetkili.id}`);
@@ -338,7 +342,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
-
         // YETKİLİ PUAN
         if (interaction.commandName === 'yetkilipuan') {
             const hedef = interaction.options.getUser('kullanici') || interaction.user;
@@ -356,7 +359,6 @@ client.on('interactionCreate', async interaction => {
             
             await interaction.reply({ embeds: [embed] });
         }
-
 
         // ÇEKİLİŞ
         if (interaction.commandName === 'cekilis') {
@@ -413,7 +415,6 @@ client.on('interactionCreate', async interaction => {
             }, msDur);
         }
 
-
         // MODERASYON
         if (['ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: 'Yetkin yok!', flags: MessageFlags.Ephemeral });
@@ -448,7 +449,6 @@ client.on('interactionCreate', async interaction => {
             if (interaction.commandName === 'unmute') { const m = interaction.options.getMember('kisi'); await m.timeout(null); await interaction.reply(`${m} susturması kaldırıldı.`); }
         }
 
-
         // LEGIT
         if (interaction.commandName === 'legit') {
             const alan = interaction.options.getUser('alan');
@@ -467,7 +467,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
-
         // ANKET
         if (interaction.commandName === 'anket') {
             const soru = interaction.options.getString('soru');
@@ -482,7 +481,6 @@ client.on('interactionCreate', async interaction => {
                 .setTitle('📊 DROP ZONE TR - ANKET')
                 .setDescription(`**Soru:** ${soru}\n\n🟩 **Evet:** \`0%\` (0 Oy)\n🟥 **Hayır:** \`0%\` (0 Oy)`)
                 .setColor('#8A2BE2')
-                .setFooter({ text: `Anketi Başlatan: ${interaction.user.username}` })
                 .setTimestamp();
 
             const row = new ActionRowBuilder().addComponents(
@@ -494,15 +492,8 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-
     // SELECT MENUS YAKALAYICI
     else if (interaction.isStringSelectMenu()) {
-        
-        // FREELOG MENÜ SEÇİMİ BURADA YAKALANIYOR
-        if (interaction.customId === 'free_log_menu') {
-            return freelogModul.handleFreeLog(interaction);
-        }
-
         if (interaction.customId === 'ticket_secim') {
             const secim = interaction.values[0];
             await interaction.reply({ content: '🔄 Destek talebiniz oluşturuluyor, lütfen bekleyin...', flags: MessageFlags.Ephemeral });
@@ -554,9 +545,14 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-
     // BUTTONS YAKALAYICI
     else if (interaction.isButton()) {
+        
+        // ⚠️ ENTEGRASYON: FREELOG BUTON TETİKLEMESİNİ YAKALIYORUZ
+        if (interaction.customId === 'btn_free_log_cek') {
+            return freelogModul.handleFreeLog(interaction);
+        }
+
         if (interaction.customId === 'ticket_kapat') {
             await interaction.reply({ content: '🔒 Bu bilet kanalı 5 saniye içinde siliniyor...' });
             setTimeout(async () => {
@@ -607,7 +603,6 @@ client.on('interactionCreate', async interaction => {
                         { name: '📩 Teslimat', value: 'Ödül otomatik olarak **DM kutusuna gönderildi!** ✅', inline: false }
                     )
                     .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 512 }))
-                    .setFooter({ text: 'Drop Zone TR • @r2xzzs' })
                     .setTimestamp();
 
                 await interaction.update({ embeds: [kazananEmbed], components: [] });
@@ -620,7 +615,6 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-
         // REROLL
         if (interaction.customId.startsWith('cekilis_reroll_')) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
@@ -629,50 +623,11 @@ client.on('interactionCreate', async interaction => {
 
             const messageId = interaction.customId.replace('cekilis_reroll_', '');
             const veri = await db.get(`cekilis_${messageId}`);
-
-            if (!veri) {
-                return interaction.reply({ content: '❌ Bu çekilişe ait veritabanı kaydı bulunamadı.', flags: MessageFlags.Ephemeral });
-            }
-
-            try {
-                const targetMessage = await interaction.channel.messages.fetch(messageId).catch(() => null);
-                if (!targetMessage) return interaction.reply({ content: '❌ Çekiliş mesajına ulaşılamadı.', flags: MessageFlags.Ephemeral });
-
-                const reaction = targetMessage.reactions.cache.get('🎉');
-                if (!reaction) return interaction.reply({ content: '❌ Katılımcı reaksiyonu (🎉) bulunamadı.', flags: MessageFlags.Ephemeral });
-
-                await reaction.users.fetch();
-                const katilimcilar = reaction.users.cache.filter(u => !u.bot);
-
-                if (katilimcilar.size === 0) {
-                    return interaction.reply({ content: '❌ Çekilişte reaksiyon veren geçerli kullanıcı kalmadığı için yeniden çekilemiyor.', flags: MessageFlags.Ephemeral });
-                }
-
-                const yeniKazananlar = katilimcilar.random(Math.min(veri.count, katilimcilar.size));
-                const kazananMention = Array.isArray(yeniKazananlar) ? yeniKazananlar.map(u => u.toString()).join(', ') : yeniKazananlar.toString();
-
-                const baslatanUye = veri.baslatanId ? `<@${veri.baslatanId}>` : `@r2xzzs`;
-
-                const yeniEmbed = new EmbedBuilder()
-                    .setTitle('🏆 ÇEKİLİŞ YENİDEN ÇEKİLDİ!')
-                    .setDescription(`**Ödül:** \`${veri.prize}\``)
-                    .addFields(
-                        { name: '👑 Kazanan(lar)', value: `> ${kazananMention}`, inline: true }, 
-                        { name: '🎟 Katılımcı', value: `\`${katilimcilar.size} kişi\``, inline: true },
-                        { name: '👤 Başlatan', value: `> ${baslatanUye}`, inline: false },
-                        { name: '📅 Çekiliş Zamanı', value: `*Başlangıç:* <t:${veri.simdi}:F>\n*Son Yenilenme:* <t:${Math.floor(Date.now() / 1000)}:R>`, inline: false }
-                    )
-                    .setColor('#00FFAA')
-                    .setFooter({ text: `Drop Zone TR • Yenileyen: ${interaction.user.username}` })
-                    .setTimestamp();
-
-                await targetMessage.edit({ embeds: [yeniEmbed] });
-                await interaction.reply({ content: `✅ Çekiliş başarıyla yeniden çekildi! Yeni kazanan(lar): ${kazananMention}` });
-
-            } catch (err) {
-                console.error(err);
-                await interaction.reply({ content: '❌ Yeniden çekme işlemi sırasında bir hata oluştu.', flags: MessageFlags.Ephemeral });
-            }
+            if (!veri) return interaction.reply({ content: '❌ Çekiliş verisi bulunamadı.', flags: MessageFlags.Ephemeral });
+            
+            await db.set(`cekilis_${messageId}.bitti', false);
+            await interaction.reply({ content: '🔄 Çekiliş yeniden çekiliyor...', flags: MessageFlags.Ephemeral });
+            await cekilisBitir(interaction.channelId, messageId);
         }
     }
 });
