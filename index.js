@@ -510,7 +510,6 @@ client.on('interactionCreate', async interaction => {
                     new ButtonBuilder().setCustomId('ticket_kapat').setLabel('🔒 Bileti Kapat').setStyle(ButtonStyle.Danger)
                 );
 
-                // Belirttiğin rol ID'sini kanalın en başında direkt etiketler
                 await ticketKanal.send({ content: `<@&${YETKILI_ROL_ID}> • ${interaction.user}`, embeds: [ticketEmbed], components: [closeRow] });
                 await interaction.editReply({ content: `✅ Destek kanalınız açıldı: ${ticketKanal}` });
             } catch (error) {
@@ -567,7 +566,7 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // ÇEKİLİŞ REROLL BUTONU (Sadece Yetkili Rol Kullanabilir)
+        // ÇEKİLİŞ REROLL BUTONU
         if (interaction.customId.startsWith('cekilis_reroll_')) {
             const messageId = interaction.customId.replace('cekilis_reroll_', '');
             const veri = await db.get(`cekilis_${messageId}`);
@@ -578,7 +577,7 @@ client.on('interactionCreate', async interaction => {
             }
 
             await interaction.reply({ content: '🔄 Çekiliş yeniden gerçekleştiriliyor...', flags: MessageFlags.Ephemeral });
-            await db.set(`cekilis_${messageId}.bitti', false);
+            await db.set(`cekilis_${messageId}.bitti`, false);
             await cekilisBitir(veri.channelId, messageId);
         }
     }
