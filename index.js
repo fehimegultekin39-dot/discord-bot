@@ -10,9 +10,9 @@ app.get('/', (req, res) => res.send('Bot 7/24 Aktif!'));
 app.listen(3000);
 
 // ================== SUNUCU YAPILANDIRMALARI ==================
-const YETKILI_ROL_ID = '1520564676956655738';       
-const DESTEK_ROL_ID = '1520564676956655738';         
-const TICKET_KANAL_ID = '1521588401864704222';       
+const YETKILI_ROL_ID = '1520564676956655738';        
+const DESTEK_ROL_ID = '1520564676956655738';          
+const TICKET_KANAL_ID = '1521588401864704222';        
 const GELEN_GIDEN_KANAL_ID = 'KANAL_ID_BURAYA'; 
 // =============================================================
 
