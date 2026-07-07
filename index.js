@@ -17,8 +17,8 @@ const YETKILI_ROL_ID = '1520564676956655738';
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1469787899712241807/1521588401864704222';
 const PREFIX = '!';
 
-// Çoklu tıklama / spam kanal açmayı RAM üzerinde engelleyen kilit havuzu
-const ticketIslem Kilitleri = new Set();
+// Değişken ismi birleştirilerek hata düzeltildi
+const ticketIslemKilitleri = new Set();
 // ==========================================
 
 function parseTurkceSure(sure) {
@@ -333,7 +333,7 @@ client.on('interactionCreate', async interaction => {
         if (interaction.customId === 'ticket_secim') {
             const userId = interaction.user.id;
 
-            // 1. ADIM: RAM ÜZERİNDEN GEÇİCİ KİLİT KONTROLÜ (Milisaniyeler içinde ardı ardına basılmayı engeller)
+            // 1. ADIM: RAM ÜZERİNDEN KİLİT KONTROLÜ (Boşluk kaldırıldı)
             if (ticketIslemKilitleri.has(userId)) {
                 return interaction.reply({ 
                     content: `❌ **Yavaş ol! İşleminiz zaten şu an gerçekleştiriliyor. Lütfen bekleyin.**`, 
