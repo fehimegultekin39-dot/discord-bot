@@ -5,6 +5,7 @@ const db = new QuickDB();
 const express = require('express');
 const ms = require('ms');
 
+// 7/24 Aktif Kalma Portu (Uptime Robot / Render Entegrasyonu İçin)
 const app = express();
 app.get('/', (req, res) => res.send('Bot 7/24 Aktif!'));
 app.listen(3000);
@@ -14,9 +15,12 @@ app.listen(3000);
 // ==========================================
 const YETKILI_ROL_ID = '1520564676956655738';
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1469787899712241807/1521588401864704222';
+const PREFIX = '!';
 // ==========================================
 
+// Türkçe Süreleri ms Modülünün Anlayacağı İngilizce Formatına Çeviren Fonksiyon
 function parseTurkceSure(sure) {
+    if (!sure) return '0s';
     return sure
         .toLowerCase()
         .trim()
@@ -38,11 +42,12 @@ const client = new Client({
     partials: [
         Partials.Channel,
         Partials.Message,
-        Partials.User
+        Partials.User,
+        Partials.Reaction
     ]
 });
 
-// SLASH KOMUTLARI TANIMLAMALARI
+// SLASCH KOMUTLARI YAPILANDIRMASI
 const commands = [
     new SlashCommandBuilder()
         .setName('drop')
@@ -58,21 +63,13 @@ const commands = [
     new SlashCommandBuilder().setName('unban').setDescription('Ban kaldırır.').addStringOption(o => o.setName('kisi_id').setDescription('Kişi ID').setRequired(true)),
     new SlashCommandBuilder().setName('mute').setDescription('Kullanıcıyi susturur.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)).addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)),
     new SlashCommandBuilder().setName('unmute').setDescription('Susturmayı kaldırır.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)),
-    new SlashCommandBuilder().setName('anket').setDescription('Gelişmiş butonlu anket başlatır.').addStringOption(o => o.setName('soru').setDescription('Anket sorusu nedir?').setRequired(true)),
-
-    // Ekonomi & Kumar Komutları
-    new SlashCommandBuilder().setName('bakiye').setDescription('Mevcut coin miktarınızı görüntüler.').addUserOption(o => o.setName('kullanici').setDescription('Bakılacak kullanıcı')),
-    new SlashCommandBuilder().setName('gunluk').setDescription('Günlük ücretsiz coin ödülünüzü alırsınız.'),
-    new SlashCommandBuilder().setName('calis').setDescription('Bir meslek icra ederek coin kazanırsınız.'),
-    new SlashCommandBuilder().setName('slot').setDescription('Slot makinesinde şansınızı denersiniz.').addIntegerOption(o => o.setName('bahis').setDescription('Yatırmak istediğiniz coin miktarı').setRequired(true).setMinValue(10)),
-    new SlashCommandBuilder().setName('blackjack').setDescription('21 (Blackjack) oynayarak bahis yaparsınız.').addIntegerOption(o => o.setName('bahis').setDescription('Yatırmak istediğiniz coin miktarı').setRequired(true).setMinValue(10)),
-    new SlashCommandBuilder().setName('yazi-tura').setDescription('Yazı tura oynarsınız.').addStringOption(o => o.setName('secim').setDescription('Yazı mı tura mı?').setRequired(true).addChoices({ name: 'Yazı', value: 'yazi' }, { name: 'Tura', value: 'tura' })).addIntegerOption(o => o.setName('bahis').setDescription('Yatırmak istediğiniz coin miktarı').setRequired(true).setMinValue(10)),
-    new SlashCommandBuilder().setName('at-yarisi').setDescription('At yarışında bahis oynarsınız.').addIntegerOption(o => o.setName('bahis').setDescription('Yatırmak istediğiniz coin miktarı').setRequired(true).setMinValue(10))
+    new SlashCommandBuilder().setName('anket').setDescription('Gelişmiş butonlu anket başlatır.').addStringOption(o => o.setName('soru').setDescription('Anket sorusu nedir?').setRequired(true))
 ].map(c => c.toJSON());
 
-async function cekilisBitir(channelId, messageId) {
+// ÇEKİLİŞİ SONUÇLANDIRAN ANA FONKSİYON (Reroll Hatası Çözülmüş Hali)
+async function cekilisBitir(channelId, messageId, isReroll = false) {
     const veri = await db.get(`cekilis_${messageId}`);
-    if (!veri || veri.bitti === true) return; 
+    if (!veri || (veri.bitti === true && !isReroll)) return; 
 
     const kanal = await client.channels.fetch(channelId).catch(() => null);
     if (!kanal) return;
@@ -85,8 +82,9 @@ async function cekilisBitir(channelId, messageId) {
     const reaction = guncelMesaj.reactions.cache.get('🎉');
     if (!reaction) return;
 
-    await reaction.users.fetch();
-    const katilimcilar = reaction.users.cache.filter(u => !u.bot);
+    // Discord API'den verileri zorla (force: true) çekerek önbellek/aynı kişinin çıkması sorununu çözer
+    const reaksiyonKullanicilari = await reaction.users.fetch({ force: true });
+    const katilimcilar = reaksiyonKullanicilari.filter(u => !u.bot);
 
     const baslatanUye = veri.baslatanId ? `<@${veri.baslatanId}>` : `Yetkili`;
 
@@ -102,7 +100,7 @@ async function cekilisBitir(channelId, messageId) {
             new ButtonBuilder().setCustomId(`cekilis_reroll_${messageId}`).setLabel('🔄 Yeniden Çek').setStyle(ButtonStyle.Secondary)
         );
 
-        return guncelMesaj.edit({ embeds: [iptalEmbed], components: [rerollRow] });
+        return guncelMesaj.edit({ embeds: [iptalEmbed], components: [rerollRow] }).catch(() => null);
     }
 
     const kazananlar = katilimcilar.random(Math.min(veri.count, katilimcilar.size));
@@ -110,7 +108,7 @@ async function cekilisBitir(channelId, messageId) {
     const bitisTimestamp = Math.floor(veri.bitisMs / 1000);
 
     const sonEmbed = new EmbedBuilder()
-        .setTitle('🏆 ÇEKİLİŞ SONA ERDİ!')
+        .setTitle(isReroll ? '🔄 ÇEKİLİŞ YENİDEN ÇEKİLDİ!' : '🏆 ÇEKİLİŞ SONA ERDİ!')
         .setDescription(`**Ödül:** \`${veri.prize}\``)
         .addFields(
             { name: '👑 Kazanan(lar)', value: `> ${kazananMention}`, inline: true }, 
@@ -127,9 +125,14 @@ async function cekilisBitir(channelId, messageId) {
         new ButtonBuilder().setLabel('Ödülü Almak İçin Ticket Aç').setStyle(ButtonStyle.Link).setURL(TICKET_KANAL_LINKI).setEmoji('🎟️')
     );
 
-    await guncelMesaj.edit({ embeds: [sonEmbed], components: [ticketRow] });
-    await kanal.send(`🎉 **Tebrikler!** ${kazananMention} **kazandı!** 💜`);
+    await guncelMesaj.edit({ embeds: [sonEmbed], components: [ticketRow] }).catch(() => null);
+    await kanal.send(`🎉 **Tebrikler!** ${kazananMention} **kazandı!** ⭐`).catch(() => null);
 }
+
+// Global Hata Yakalayıcı (Botun Çökmesini Önler)
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Yakalanmayan Hata Kontrolü:', reason);
+});
 
 client.once('ready', async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
@@ -143,25 +146,72 @@ client.once('ready', async (c) => {
     console.log(`${c.user.tag} aktif! (stardebugX ready)`);
 });
 
-// ETKİLEŞİM YAKALAYICI (INTERACTION CREATE)
+// ==========================================
+//      PREFIX TABANLI KOMUTLAR (!uyarı)
+// ==========================================
+client.on('messageCreate', async message => {
+    if (message.author.bot || !message.guild || !message.content.startsWith(PREFIX)) return;
+
+    const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+    const command = args.shift().toLowerCase();
+
+    if (command === 'uyarı' || command === 'uyari') {
+        // Yetki Kontrolü
+        if (!message.member.roles.cache.has(YETKILI_ROL_ID) && !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            return message.reply('❌ Bu komutu kullanmak için yetkiniz yetersiz!').catch(() => null);
+        }
+
+        const hedefUye = message.mentions.members.first();
+        if (!hedefUye) return message.reply('❌ Lütfen uyarmak istediğiniz kullanıcıyı etiketleyin! Örnek: `!uyarı @kullanıcı`').catch(() => null);
+
+        if (hedefUye.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            return message.reply('❌ Bir yöneticiyi uyaramazsınız!').catch(() => null);
+        }
+
+        const userId = hedefUye.id;
+        const mevcutUyari = (await db.get(`uyari_sayisi_${userId}`)) || 0;
+        const yeniUyari = mevcutUyari + 1;
+
+        if (yeniUyari === 1) {
+            await db.set(`uyari_sayisi_${userId}`, 1);
+            return message.channel.send(`⚠️ ${hedefUye} kullanıcısı ilk uyarısını aldı! **(Uyarı 1/3)**`).catch(() => null);
+        } 
+        else if (yeniUyari === 2) {
+            await db.set(`uyari_sayisi_${userId}`, 2);
+            // Kural gereği: 2 saat mute (timeout) cezası
+            const ikiSaatMs = 2 * 60 * 60 * 1000;
+            await hedefUye.timeout(ikiSaatMs, '2. Uyarı Cezası').catch(() => null);
+            return message.channel.send(`🔇 ${hedefUye} kullanıcısı 2. uyarısını aldı! Ceza olarak **2 saat susturuldu**. **(Uyarı 2/3)**`).catch(() => null);
+        } 
+        else if (yeniUyari >= 3) {
+            await db.delete(`uyari_sayisi_${userId}`); // Ceza puanını sıfırla
+            await hedefUye.kick('3. Uyarı Cezası (Sunucudan Atılma)').catch(() => null);
+            return message.channel.send(`🧲 ${hedefUye.user.tag} kullanıcısı 3. uyarısını aldı ve **sunucudan atıldı!**`).catch(() => null);
+        }
+    }
+});
+
+// ==========================================
+//          SLASH KOMUT ETKİLEŞİMLERİ
+// ==========================================
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
         
-        // SUNUCU YETKİLİSİ KONTROLÜ GEREKTİREN KOMUTLAR
+        // Tüm komutlar için merkezi yetki kontrolü (Kod tasarrufu sağlar)
         if (['drop', 'cekilis', 'ticketpanel', 'anket', 'ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
-            if (!interaction.member.roles.cache.has(YETKILI_ROL_ID) && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                return interaction.reply({ content: '❌ Bu sistemi veya komutu kullanmak için yetkiniz yetersiz!', flags: MessageFlags.Ephemeral });
+            if (!interaction.member?.roles?.cache?.has(YETKILI_ROL_ID) && !interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator)) {
+                return interaction.reply({ content: '❌ Bu sistemi veya komutu kullanmak için yetkiniz yetersiz!', flags: MessageFlags.Ephemeral }).catch(() => null);
             }
         }
 
-        // DROP KOMUTU
+        // DROP KOMUTU MANTIĞI
         if (interaction.commandName === 'drop') {
             const gorunenOdul = interaction.options.getString('gorunen');
             const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
             const gorselDosyası = interaction.options.getAttachment('gorsel_dosyasi');
             
             if (!gizliOdul && !gorselDosyası) {
-                return interaction.reply({ content: '❌ **Hata:** Gizli bilgi veya görsel dosyası eklemelisiniz!', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ **Hata:** Gizli bilgi veya görsel dosyası eklemelisiniz!', flags: MessageFlags.Ephemeral }).catch(() => null);
             }
 
             const gorselUrl = gorselDosyası ? gorselDosyası.url : null;
@@ -186,10 +236,10 @@ client.on('interactionCreate', async interaction => {
                 .setFooter({ text: `stardebugX • Başlatan: @${interaction.user.username}` })
                 .setTimestamp();
             
-            await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
+            await interaction.reply({ embeds: [baslangicEmbed], components: [row] }).catch(() => null);
         }
 
-        // TICKET PANEL KOMUTU
+        // TICKET PANEL KOMUTU MANTIĞI
         if (interaction.commandName === 'ticketpanel') {
             const row = new ActionRowBuilder().addComponents(
                 new StringSelectMenuBuilder()
@@ -207,23 +257,23 @@ client.on('interactionCreate', async interaction => {
             );
 
             const embed = new EmbedBuilder()
-                .setTitle('💜 star debug ticket — Destek Merkezi')
+                .setTitle('⭐ star debug ticket — Destek Merkezi')
                 .setDescription('Merhaba! Yardım almak istediğiniz kategoriyi aşağıdaki menüden seçerek bir destek bileti oluşturabilirsiniz.')
                 .setColor('#2F3136')
                 .setFooter({ text: 'stardebugX Gelişmiş Bilet Sistemi' });
 
-            await interaction.reply({ embeds: [embed], components: [row] });
+            await interaction.reply({ embeds: [embed], components: [row] }).catch(() => null);
         }
 
-        // ÇEKİLİŞ KOMUTU
+        // ÇEKİLİŞ KOMUTU MANTIĞI
         if (interaction.commandName === 'cekilis') {
-            await interaction.deferReply(); 
+            await interaction.deferReply().catch(() => null); 
             const durInput = interaction.options.getString('sure');
             const count = interaction.options.getInteger('kazanan_sayisi');
             const prize = interaction.options.getString('odul');
             
             let msDur = ms(parseTurkceSure(durInput));
-            if (!msDur || isNaN(msDur)) return interaction.editReply({ content: '❌ Geçersiz süre formatı!' });
+            if (!msDur || isNaN(msDur)) return interaction.editReply({ content: '❌ Geçersiz süre formatı!' }).catch(() => null);
             
             const simdi = Math.floor(Date.now() / 1000);
             const bitis = simdi + Math.floor(msDur / 1000);
@@ -235,53 +285,57 @@ client.on('interactionCreate', async interaction => {
                 .setColor('#8A2BE2')
                 .setFooter({ text: '🎉 emojisine tıklayarak katılın!' });
             
-            const mesaj = await interaction.editReply({ embeds: [embed] });
-            await mesaj.react('🎉');
-            
-            await db.set(`cekilis_${mesaj.id}`, {
-                channelId: interaction.channel.id,
-                prize: prize,
-                count: count,
-                simdi: simdi,
-                bitisMs: bitisMs,
-                bitti: false,
-                baslatanId: interaction.user.id,
-                baslatanTag: `@${interaction.user.username}`
-            });
+            const mesaj = await interaction.editReply({ embeds: [embed] }).catch(() => null);
+            if (mesaj) {
+                await mesaj.react('🎉').catch(() => null);
+                
+                await db.set(`cekilis_${mesaj.id}`, {
+                    channelId: interaction.channel.id,
+                    prize: prize,
+                    count: count,
+                    simdi: simdi,
+                    bitisMs: bitisMs,
+                    bitti: false,
+                    baslatanId: interaction.user.id,
+                    baslatanTag: `@${interaction.user.username}`
+                });
 
-            setTimeout(async () => {
-                await cekilisBitir(interaction.channel.id, mesaj.id);
-            }, msDur);
+                setTimeout(async () => {
+                    await cekilisBitir(interaction.channel.id, mesaj.id);
+                }, msDur);
+            }
         }
 
-        // MODERASYON KOMUTLARI (BAN-MUTE vb.)
+        // MODERASYON KOMUTLARI MANTIĞI
         if (interaction.commandName === 'ban') {
             const m = interaction.options.getMember('kisi');
-            if (!m) return interaction.reply('Kullanıcı bulunamadı.');
+            if (!m) return interaction.reply('Kullanıcı bulunamadı.').catch(() => null);
             await m.ban().catch(() => null);
-            await interaction.reply(`✅ ${m.user.tag} sunucudan banlandı.`);
+            await interaction.reply(`✅ ${m.user.tag} sunucudan banlandı.`).catch(() => null);
         }
         if (interaction.commandName === 'unban') {
             const id = interaction.options.getString('kisi_id');
             await interaction.guild.members.unban(id).catch(() => null);
-            await interaction.reply('✅ Belirtilen kullanıcının banı kaldırıldı.');
+            await interaction.reply('✅ Belirtilen kullanıcının banı kaldırıldı.').catch(() => null);
         }
         if (interaction.commandName === 'mute') {
             const m = interaction.options.getMember('kisi');
             const sureInput = interaction.options.getString('sure');
             let msDur = ms(parseTurkceSure(sureInput));
-            if (!msDur || isNaN(msDur)) return interaction.reply({ content: '❌ Geçersiz süre!', flags: MessageFlags.Ephemeral });
+            if (!msDur || isNaN(msDur)) return interaction.reply({ content: '❌ Geçersiz süre!', flags: MessageFlags.Ephemeral }).catch(() => null);
             
             await m.timeout(msDur, 'Mute Komutu').catch(() => null);
-            await interaction.reply(`✅ ${m} kullanıcısı **${sureInput}** süresince susturuldu.`);
+            await interaction.reply(`✅ ${m} kullanıcısı **${sureInput}** süresince susturuldu.`).catch(() => null);
         }
         if (interaction.commandName === 'unmute') {
             const m = interaction.options.getMember('kisi');
-            await m.timeout(null).catch(() => null);
-            await interaction.reply(`✅ ${m} susturulması açıldı.`);
+            if (!m) return interaction.reply('Kullanıcı bulunamadı.').catch(() => null);
+            
+            await m.timeout(null, 'Manuel Unmute Komutu').catch(() => null);
+            await interaction.reply(`✅ ${m} susturulması yetkili tarafından erkenden kaldırıldı.`).catch(() => null);
         }
 
-        // ANKET KOMUTU
+        // ANKET KOMUTU MANTIĞI
         if (interaction.commandName === 'anket') {
             const soru = interaction.options.getString('soru');
             const embed = new EmbedBuilder()
@@ -293,188 +347,17 @@ client.on('interactionCreate', async interaction => {
                 new ButtonBuilder().setCustomId('anket_e').setLabel('Evet').setStyle(ButtonStyle.Success),
                 new ButtonBuilder().setCustomId('anket_h').setLabel('Hayır').setStyle(ButtonStyle.Danger)
             );
-            await interaction.reply({ embeds: [embed], components: [row] });
-        }
-
-        // ==========================================
-        //        EKONOMİ VE KUMAR KOMUTLARI
-        // ==========================================
-        if (interaction.commandName === 'bakiye') {
-            const hedef = interaction.options.getUser('kullanici') || interaction.user;
-            const bakiye = await db.get(`bakiye_${hedef.id}`) || 0;
-            const bakiyeEmbed = new EmbedBuilder()
-                .setTitle('💰 Bakiye Bilgisi')
-                .setDescription(`${hedef} kullanıcısının toplam cüzdan bakiyesi:\n\n**💵 \`${bakiye.toLocaleString()}\` coin**`)
-                .setColor('#FFD700')
-                .setThumbnail(hedef.displayAvatarURL());
-            return interaction.reply({ embeds: [bakiyeEmbed] });
-        }
-
-        if (interaction.commandName === 'gunluk') {
-            const userId = interaction.user.id;
-            const sonKullanim = await db.get(`gunluk_sure_${userId}`) || 0;
-            const beklemeSuresi = 24 * 60 * 60 * 1000;
-
-            if (Date.now() - sonKullanim < beklemeSuresi) {
-                const kalanMs = beklemeSuresi - (Date.now() - sonKullanim);
-                const kalanSaat = Math.ceil(kalanMs / (1000 * 60 * 60));
-                return interaction.reply({ content: `❌ Günlük ödülünü zaten almışsın! Tekrar alabilmek için **${kalanSaat} saat** beklemelisin.`, flags: MessageFlags.Ephemeral });
-            }
-
-            const odul = Math.floor(Math.random() * 3000) + 1000;
-            await db.add(`bakiye_${userId}`, odul);
-            await db.set(`gunluk_sure_${userId}`, Date.now());
-            const yeniBakiye = await db.get(`bakiye_${userId}`);
-
-            const embed = new EmbedBuilder()
-                .setTitle('📆 Günlük Ödül Alındı!')
-                .setDescription(`**💵 Kazanılan:** \`${odul}\` coin\n**💰 Toplam Bakiye:** \`${yeniBakiye.toLocaleString()}\` coin`)
-                .setColor('#00FF00');
-            return interaction.reply({ embeds: [embed] });
-        }
-
-        if (interaction.commandName === 'calis') {
-            const userId = interaction.user.id;
-            const sonCalisma = await db.get(`calis_sure_${userId}`) || 0;
-            if (Date.now() - sonCalisma < 60000) {
-                return interaction.reply({ content: '❌ Çok yoruldun! Dinlenmek için biraz bekle.', flags: MessageFlags.Ephemeral });
-            }
-
-            const meslekler = [
-                { isim: 'Balıkçı 🐟', min: 200, max: 800 },
-                { isim: 'Madenci ⛏️', min: 400, max: 1000 },
-                { isim: 'Yazılımcı 💻', min: 600, max: 1500 },
-                { isim: 'Kurye 🛵', min: 150, max: 600 }
-            ];
-            const rastgeleMeslek = meslekler[Math.floor(Math.random() * meslekler.length)];
-            const kazanc = Math.floor(Math.random() * (rastgeleMeslek.max - rastgeleMeslek.min)) + rastgeleMeslek.min;
-
-            await db.add(`bakiye_${userId}`, kazanc);
-            await db.set(`calis_sure_${userId}`, Date.now());
-            const yeniBakiye = await db.get(`bakiye_${userId}`);
-
-            const embed = new EmbedBuilder()
-                .setTitle('👔 Meslek Başarı Bildirimi')
-                .addFields(
-                    { name: '💼 Meslek', value: rastgeleMeslek.isim, inline: true },
-                    { name: '🪙 Kazanılan', value: `${kazanc} coin`, inline: true },
-                    { name: '💰 Yeni Bakiye', value: `${yeniBakiye.toLocaleString()} coin`, inline: false }
-                )
-                .setColor('#1E90FF');
-            return interaction.reply({ embeds: [embed] });
-        }
-
-        if (interaction.commandName === 'slot') {
-            const userId = interaction.user.id;
-            const bahis = interaction.options.getInteger('bahis');
-            const bakiye = await db.get(`bakiye_${userId}`) || 0;
-
-            if (bakiye < bahis) return interaction.reply({ content: '❌ Yetersiz coin!', flags: MessageFlags.Ephemeral });
-
-            const slotlar = ['🍎', '🍊', '🍐', '🍋', '💎', '⭐'];
-            const s1 = slotlar[Math.floor(Math.random() * slotlar.length)];
-            const s2 = slotlar[Math.floor(Math.random() * slotlar.length)];
-            const s3 = slotlar[Math.floor(Math.random() * slotlar.length)];
-
-            let kazandi = false;
-            let carpan = 0;
-
-            if (s1 === s2 && s2 === s3) { kazandi = true; carpan = 3; }
-            else if (s1 === s2 || s2 === s3 || s1 === s3) { kazandi = true; carpan = 1.5; }
-
-            const embed = new EmbedBuilder().setTitle('🎰 Slot Makinesi');
-
-            if (kazandi) {
-                const odul = Math.floor(bahis * carpan);
-                await db.add(`bakiye_${userId}`, odul);
-                const sonBakiye = await db.get(`bakiye_${userId}`);
-                embed.setDescription(`**[ ${s1} | ${s2} | ${s3} ]**\n\n🎉 **Tebrikler Kazandınız!**\n💵 **Kazanılan:** \`${odul}\` coin\n💰 **Güncel Bakiye:** \`${sonBakiye.toLocaleString()}\``).setColor('#00FF00');
-            } else {
-                await db.sub(`bakiye_${userId}`, bahis);
-                const sonBakiye = await db.get(`bakiye_${userId}`);
-                embed.setDescription(`**[ ${s1} | ${s2} | ${s3} ]**\n\n❌ **Maalesef Kaybettiniz!**\n📉 **Kaybedilen:** \`${bahis}\` coin\n💰 **Güncel Bakiye:** \`${sonBakiye.toLocaleString()}\``).setColor('#FF0000');
-            }
-            return interaction.reply({ embeds: [embed] });
-        }
-
-        if (interaction.commandName === 'blackjack') {
-            const userId = interaction.user.id;
-            const bahis = interaction.options.getInteger('bahis');
-            const bakiye = await db.get(`bakiye_${userId}`) || 0;
-
-            if (bakiye < bahis) return interaction.reply({ content: '❌ Yetersiz bakiye!', flags: MessageFlags.Ephemeral });
-
-            const oyuncuSkor = Math.floor(Math.random() * 11) + 11;
-            const kasaSkor = Math.floor(Math.random() * 10) + 12;
-
-            const embed = new EmbedBuilder().setTitle('🃏 Blackjack / 21');
-
-            if (oyuncuSkor > 21) {
-                await db.sub(`bakiye_${userId}`, bahis);
-                embed.setDescription(`**BUST!** 21'i geçtiniz.\nDealer Skor: \`${kasaSkor}\`\nSenin Skor: \`${oyuncuSkor}\`\n\n❌ **Kaybettin:** \`-${bahis}\` coin`).setColor('#FF0000');
-            } else if (kasaSkor > 21 || oyuncuSkor > kasaSkor) {
-                await db.add(`bakiye_${userId}`, bahis);
-                embed.setDescription(`**KAZANDIN!** Kasayı alt ettin.\nDealer Skor: \`${kasaSkor}\`\nSenin Skor: \`${oyuncuSkor}\`\n\n🎉 **Kazandın:** \`+${bahis}\` coin`).setColor('#00FF00');
-            } else if (oyuncuSkor === kasaSkor) {
-                embed.setDescription(`**Beraberlik!** Paranı geri aldın.\nDealer Skor: \`${kasaSkor}\`\nSenin Skor: \`${oyuncuSkor}\``).setColor('#FFFF00');
-            } else {
-                await db.sub(`bakiye_${userId}`, bahis);
-                embed.setDescription(`**Kasa Kazandı!**\nDealer Skor: \`${kasaSkor}\`\nSenin Skor: \`${oyuncuSkor}\`\n\n❌ **Kaybettin:** \`-${bahis}\` coin`).setColor('#FF0000');
-            }
-            return interaction.reply({ embeds: [embed] });
-        }
-
-        if (interaction.commandName === 'yazi-tura') {
-            const userId = interaction.user.id;
-            const secim = interaction.options.getString('secim');
-            const bahis = interaction.options.getInteger('bahis');
-            const bakiye = await db.get(`bakiye_${userId}`) || 0;
-
-            if (bakiye < bahis) return interaction.reply({ content: '❌ Bakiyeniz yetersiz.', flags: MessageFlags.Ephemeral });
-
-            const sonuclar = ['yazi', 'tura'];
-            const sistemSonuc = sonuclar[Math.floor(Math.random() * sonuclar.length)];
-            const embed = new EmbedBuilder().setTitle('🪙 Yazı-Tura Parası Atıldı');
-
-            if (secim === sistemSonuc) {
-                await db.add(`bakiye_${userId}`, bahis);
-                embed.setDescription(`Para Döndü ve **${sistemSonuc.toUpperCase()}** Geldi!\n\n🎉 **Tebrikler bildiniz!**\n💰 \`+${bahis}\` coin eklendi.`).setColor('#00FF00');
-            } else {
-                await db.sub(`bakiye_${userId}`, bahis);
-                embed.setDescription(`Para Döndü ve **${sistemSonuc.toUpperCase()}** Geldi...\n\n❌ **Yanlış tahmin!**\n📉 \`-${bahis}\` coin kaybettiniz.`).setColor('#FF0000');
-            }
-            return interaction.reply({ embeds: [embed] });
-        }
-
-        if (interaction.commandName === 'at-yarisi') {
-            const userId = interaction.user.id;
-            const bahis = interaction.options.getInteger('bahis');
-            const bakiye = await db.get(`bakiye_${userId}`) || 0;
-
-            if (bakiye < bahis) return interaction.reply({ content: '❌ Paran kalmamış!', flags: MessageFlags.Ephemeral });
-
-            const atlar = ['⚡ Yıldırım', '🔥 Ateş', '❄️ Rüzgar', '🌊 Fırtına'];
-            const seninAtin = atlar[Math.floor(Math.random() * atlar.length)];
-            const kazananAt = atlar[Math.floor(Math.random() * atlar.length)];
-            const embed = new EmbedBuilder().setTitle('🏇 At Yarışı Sonucu');
-
-            if (seninAtin === kazananAt) {
-                const kazanc = bahis * 2;
-                await db.add(`bakiye_${userId}`, kazanc);
-                embed.setDescription(`🏁 Yarış bitti!\n\n🌟 **Senin Atın:** \`${seninAtin}\`\n🏆 **Kazanan At:** \`${kazananAt}\`\n\n🎉 Müthiş Tahmin! Kazancın: **\`+${kazanc}\` coin**`).setColor('#00FF00');
-            } else {
-                await db.sub(`bakiye_${userId}`, bahis);
-                embed.setDescription(`🏁 Yarış bitti...\n\n🌟 **Senin Atın:** \`${seninAtin}\`\n🏆 **Kazanan At:** \`${kazananAt}\`\n\n❌ Senin at geride kaldı! **\`-${bahis}\` coin** kaybettin.`).setColor('#FF0000');
-            }
-            return interaction.reply({ embeds: [embed] });
+            await interaction.reply({ embeds: [embed], components: [row] }).catch(() => null);
         }
     }
 
-    // TICKET MENÜ SEÇİM ETKİLEŞİMLERİ
+    // ==========================================
+//      TICKET SEÇİM VE KANAL OLUŞTURMA
+// ==========================================
     else if (interaction.isStringSelectMenu()) {
         if (interaction.customId === 'ticket_secim') {
             const secim = interaction.values[0];
-            await interaction.reply({ content: '🔄 Destek talebiniz açılıyor, lütfen bekleyin...', flags: MessageFlags.Ephemeral });
+            await interaction.reply({ content: '🔄 Destek talebiniz açılıyor, lütfen bekleyin...', flags: MessageFlags.Ephemeral }).catch(() => null);
 
             const kategoriIsimleri = {
                 'cekilis_kazandim': 'ticket-çekiliş',
@@ -486,12 +369,22 @@ client.on('interactionCreate', async interaction => {
                 'diger': 'ticket-diğer'
             };
 
+            const kategoriAciklamalari = {
+                'cekilis_kazandim': '🎉 **Çekiliş Kazandınız Talebi:**\nLütfen kazandığınız çekilişe dair ekran görüntüsünü (SS) ve gerekli bilgilerinizi bu kanala ileterek yetkilinin yanıt vermesini bekleyin.',
+                'drop_kazandim': '🎁 **Drop Kazandınız Talebi:**\nHızlıca drop kazandığınız anı veya drop ödül adını belirtin. Sistem kontrol edilip teslimat doğrulanacaktır.',
+                'hesap_satinal': '💲 **Hesap Satın Alma Talebi:**\nSatın almak istediğiniz ürün listesini veya miktarını yazın. Güvenli ödeme kanalları ve detaylar birazdan paylaşılacaktır.',
+                'partnerlik': '🤝 **Partnerlik & İşbirliği Talebi:**\nLütfen sunucunuzun davet bağlantısını, üye istatistiklerinizi ve partnerlik metninizi buraya bırakın. Partnerlik sorumlumuz inceleyecektir.',
+                'yetkili_alim': '🔵 **Yetkili Alım Başvurusu:**\nEkibimize katılmak istediğiniz için teşekkürler! Yaşınız, aktiflik süreniz ve daha önceki tecrübeleriniz hakkında buraya kısa bir özet geçiniz.',
+                'teknik_destek': '🔧 **Teknik Destek Talebi:**\nYaşadığınız teknik problemi veya hatayı detaylıca (varsa görsel ekleyerek) açıklayın. Teknik ekip en kısa sürede müdahale edecektir.',
+                'diger': '❓ **Genel / Diğer Konular:**\nYukarıdaki kategorilere uymayan sorunuzu veya talebinizi doğrudan bu kanala yazabilirsiniz.'
+            };
+
             const canalAdi = `${kategoriIsimleri[secim] || 'ticket'}-${interaction.user.username}`;
 
             try {
                 const ticketKanal = await interaction.guild.channels.create({
                     name: canalAdi,
-                    type: 0,
+                    type: 0, 
                     permissionOverwrites: [
                         { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
                         { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
@@ -499,9 +392,11 @@ client.on('interactionCreate', async interaction => {
                     ]
                 });
 
+                const detayAciklama = kategoriAciklamalari[secim] || 'Yetkililerimiz en kısa sürede sizinle ilgilenecektir.';
+
                 const ticketEmbed = new EmbedBuilder()
                     .setTitle('🎟️ star debug ticket — Destek Bileti')
-                    .setDescription(`Merhaba ${interaction.user}, biletiniz başarıyla açıldı!\nYetkililerimiz en kısa sürede sizinle ilgilenecektir.\n\n**Talep Türü:** \`${canalAdi.split('-')[1].toUpperCase()}\``)
+                    .setDescription(`Merhaba ${interaction.user}, biletiniz başarıyla açıldı!\n\n${detayAciklama}`)
                     .setColor('#8A2BE2')
                     .setFooter({ text: 'Bileti kapatmak için aşağıdaki kırmızı butona basabilirsiniz.' })
                     .setTimestamp();
@@ -510,19 +405,21 @@ client.on('interactionCreate', async interaction => {
                     new ButtonBuilder().setCustomId('ticket_kapat').setLabel('🔒 Bileti Kapat').setStyle(ButtonStyle.Danger)
                 );
 
-                await ticketKanal.send({ content: `<@&${YETKILI_ROL_ID}> • ${interaction.user}`, embeds: [ticketEmbed], components: [closeRow] });
-                await interaction.editReply({ content: `✅ Destek kanalınız açıldı: ${ticketKanal}` });
+                await ticketKanal.send({ content: `<@&${YETKILI_ROL_ID}> • ${interaction.user}`, embeds: [ticketEmbed], components: [closeRow] }).catch(() => null);
+                await interaction.editReply({ content: `✅ Destek kanalınız açıldı: ${ticketKanal}` }).catch(() => null);
             } catch (error) {
                 console.error(error);
-                await interaction.editReply({ content: '❌ Kanal oluşturulurken teknik hata oluştu.' });
+                await interaction.editReply({ content: '❌ Kanal oluşturulurken yetki veya teknik hata oluştu.' }).catch(() => null);
             }
         }
     }
 
-    // BUTON ETKİLEŞİMLERİ YAKALAYICI
+    // ==========================================
+    //            BUTON TIKLAMA OLAYLARI
+    // ==========================================
     else if (interaction.isButton()) {
         if (interaction.customId === 'ticket_kapat') {
-            await interaction.reply({ content: '🔒 Bu bilet kanalı 5 saniye içinde kalıcı olarak siliniyor...' });
+            await interaction.reply({ content: '🔒 Bu bilet kanalı 5 saniye içinde kalıcı olarak siliniyor...' }).catch(() => null);
             setTimeout(async () => {
                 await interaction.channel.delete().catch(() => null);
             }, 5000);
@@ -530,16 +427,16 @@ client.on('interactionCreate', async interaction => {
         }
 
         if (interaction.customId === 'anket_e' || interaction.customId === 'anket_h') {
-            return interaction.reply({ content: '✅ Oyunuz başarıyla sisteme kaydedildi!', flags: MessageFlags.Ephemeral });
+            return interaction.reply({ content: '✅ Oyunuz başarıyla sisteme kaydedildi!', flags: MessageFlags.Ephemeral }).catch(() => null);
         }
 
-        // DROP KAZANMA BUTONU
+        // DROP BUTONUNA BASILDIĞINDA
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const dropVeri = await db.get(`drop_data_${dropId}`);
 
-            if (!dropVeri) return interaction.reply({ content: '❌ Drop verisi bulunamadı.', flags: MessageFlags.Ephemeral });
-            if (dropVeri.bitti === true) return interaction.reply({ content: '❌ Bu drop ödülü zaten kapılmış!', flags: MessageFlags.Ephemeral });
+            if (!dropVeri) return interaction.reply({ content: '❌ Drop verisi bulunamadı.', flags: MessageFlags.Ephemeral }).catch(() => null);
+            if (dropVeri.bitti === true) return interaction.reply({ content: '❌ Bu drop ödülü zaten kapılmış!', flags: MessageFlags.Ephemeral }).catch(() => null);
 
             await db.set(`drop_data_${dropId}.bitti`, true);
 
@@ -554,31 +451,30 @@ client.on('interactionCreate', async interaction => {
                 await interaction.user.send({ embeds: [dmEmbed] });
 
                 const kazananEmbed = new EmbedBuilder()
-                    .setTitle('🎉 DROP KAZANILDI! 💜')
+                    .setTitle('🎉 DROP KAZANILDI! ⭐')
                     .setDescription(`🏆 ${interaction.user} ödülü ilk kapan kişi oldu!\n\n**Ödül:** \`${dropVeri.gorunen}\``)
                     .setColor('#8A2BE2')
                     .setThumbnail(interaction.user.displayAvatarURL());
 
-                await interaction.update({ embeds: [kazananEmbed], components: [] });
+                await interaction.update({ embeds: [kazananEmbed], components: [] }).catch(() => null);
             } catch (err) {
                 await db.set(`drop_data_${dropId}.bitti`, false); 
-                return interaction.reply({ content: '❌ Ödül teslim edilemedi, lütfen DM kutunuzu açın!', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ Ödül teslim edilemedi, lütfen DM kutunuzu açın!', flags: MessageFlags.Ephemeral }).catch(() => null);
             }
         }
 
-        // ÇEKİLİŞ REROLL BUTONU
+        // REROLL BUTONUNA BASILDIĞINDA
         if (interaction.customId.startsWith('cekilis_reroll_')) {
             const messageId = interaction.customId.replace('cekilis_reroll_', '');
             const veri = await db.get(`cekilis_${messageId}`);
-            if (!veri) return interaction.reply({ content: '❌ Çekiliş verisi yok.', flags: MessageFlags.Ephemeral });
+            if (!veri) return interaction.reply({ content: '❌ Çekiliş verisi yok.', flags: MessageFlags.Ephemeral }).catch(() => null);
 
-            if (!interaction.member.roles.cache.has(YETKILI_ROL_ID) && !interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                return interaction.reply({ content: '❌ Bunu sadece yetkililer yeniden çekebilir!', flags: MessageFlags.Ephemeral });
+            if (!interaction.member?.roles?.cache?.has(YETKILI_ROL_ID) && !interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator)) {
+                return interaction.reply({ content: '❌ Bunu sadece yetkililer yeniden çekebilir!', flags: MessageFlags.Ephemeral }).catch(() => null);
             }
 
-            await interaction.reply({ content: '🔄 Çekiliş yeniden gerçekleştiriliyor...', flags: MessageFlags.Ephemeral });
-            await db.set(`cekilis_${messageId}.bitti`, false);
-            await cekilisBitir(veri.channelId, messageId);
+            await interaction.reply({ content: '🔄 Çekiliş listesi sıfırlanıyor ve yeni kazanan belirleniyor...', flags: MessageFlags.Ephemeral }).catch(() => null);
+            await cekilisBitir(veri.channelId, messageId, true);
         }
     }
 });
