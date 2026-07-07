@@ -17,7 +17,7 @@ const YETKILI_ROL_ID = '1520564676956655738';
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1469787899712241807/1521588401864704222';
 const PREFIX = '!';
 
-// Değişken ismi birleştirilerek hata düzeltildi
+// Spam koruması için kilit seti
 const ticketIslemKilitleri = new Set();
 // ==========================================
 
@@ -87,8 +87,8 @@ async function cekilisBitir(channelId, messageId, isReroll = false) {
         const iptalEmbed = new EmbedBuilder()
             .setTitle('❌ ÇEKİLİŞ İPTAL EDİLDİ')
             .setDescription(`**Ödül:** \`${veri.prize}\`\n\nKatılımcı yetersiz olduğu için çekiliş iptal oldu.`)
-            .setColor('#FF0000')
-            .setFooter({ text: `stardebugX` })
+            .setColor('#111111')
+            .setFooter({ text: `Black Market` })
             .setTimestamp();
         
         const rerollRow = new ActionRowBuilder().addComponents(
@@ -111,8 +111,8 @@ async function cekilisBitir(channelId, messageId, isReroll = false) {
             { name: '👤 Başlatan', value: `> ${baslatanUye}`, inline: false },
             { name: '📅 Çekiliş Zamanı', value: `*Başlangıç:* <t:${veri.simdi}:F>\n*Bitiş:* <t:${bitisTimestamp}:F>`, inline: false }
         )
-        .setColor('#00FFAA')
-        .setFooter({ text: `stardebugX • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'}` })
+        .setColor('#111111')
+        .setFooter({ text: `Black Market • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'}` })
         .setTimestamp();
 
     const ticketRow = new ActionRowBuilder().addComponents(
@@ -214,10 +214,10 @@ client.on('interactionCreate', async interaction => {
             );
             
             const baslangicEmbed = new EmbedBuilder()
-                .setTitle('🎉 stardebugX DROP!')
+                .setTitle('🎉 Black Market DROP!')
                 .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülü kapar!*`)
-                .setColor('#8A2BE2')
-                .setFooter({ text: `stardebugX • Başlatan: @${interaction.user.username}` })
+                .setColor('#111111')
+                .setFooter({ text: `Black Market • Başlatan: @${interaction.user.username}` })
                 .setTimestamp();
             
             await interaction.reply({ embeds: [baslangicEmbed], components: [row] }).catch(() => null);
@@ -241,10 +241,10 @@ client.on('interactionCreate', async interaction => {
             );
 
             const embed = new EmbedBuilder()
-                .setTitle('⭐ star debug ticket — Destek Merkezi')
+                .setTitle('⚙️ Black Market — Destek Merkezi')
                 .setDescription('Merhaba! Yardım almak istediğiniz kategoriyi aşağıdaki menüden seçerek bir destek bileti oluşturabilirsiniz.')
-                .setColor('#2F3136')
-                .setFooter({ text: 'stardebugX Gelişmiş Bilet Sistemi' });
+                .setColor('#111111')
+                .setFooter({ text: 'Black Market Gelişmiş Bilet Sistemi' });
 
             await interaction.reply({ embeds: [embed], components: [row] }).catch(() => null);
         }
@@ -263,9 +263,9 @@ client.on('interactionCreate', async interaction => {
             const bitisMs = Date.now() + msDur;
             
             const embed = new EmbedBuilder()
-                .setTitle('🎉 stardebugX ÇEKİLİŞ 🎉')
+                .setTitle('🎉 Black Market ÇEKİLİŞ 🎉')
                 .setDescription(`**Ödül:** \`${prize}\`\n**Kazanan Sayısı:** \`${count}\`\n**Başlatan:** ${interaction.user}\n\n⏳ **Bitiş:** <t:${bitis}:R>`)
-                .setColor('#8A2BE2')
+                .setColor('#111111')
                 .setFooter({ text: '🎉 emojisine tıklayarak katılın!' });
             
             const mesaj = await interaction.editReply({ embeds: [embed] }).catch(() => null);
@@ -317,7 +317,7 @@ client.on('interactionCreate', async interaction => {
         }
         if (interaction.commandName === 'anket') {
             const soru = interaction.options.getString('soru');
-            const embed = new EmbedBuilder().setTitle('📊 ANKET').setDescription(`**Soru:** ${soru}\n\n🟩 **Evet** | 🟥 **Hayır**`).setColor('#8A2BE2');
+            const embed = new EmbedBuilder().setTitle('📊 ANKET').setDescription(`**Soru:** ${soru}\n\n🟩 **Evet** | 🟥 **Hayır**`).setColor('#111111');
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('anket_e').setLabel('Evet').setStyle(ButtonStyle.Success),
                 new ButtonBuilder().setCustomId('anket_h').setLabel('Hayır').setStyle(ButtonStyle.Danger)
@@ -327,31 +327,31 @@ client.on('interactionCreate', async interaction => {
     }
 
     // ==========================================
-    //    TICKET MENÜ SEÇİMİ (SPAM KORUMALI)
+    //    TICKET MENÜ SEÇİMİ (KESİN SPAM ENGELİ)
     // ==========================================
     else if (interaction.isStringSelectMenu()) {
         if (interaction.customId === 'ticket_secim') {
             const userId = interaction.user.id;
 
-            // 1. ADIM: RAM ÜZERİNDEN KİLİT KONTROLÜ (Boşluk kaldırıldı)
+            // KİLİT KONTROLÜ - Fonksiyonun EN BAŞINDA (Hafızada çakışmayı önler)
             if (ticketIslemKilitleri.has(userId)) {
                 return interaction.reply({ 
-                    content: `❌ **Yavaş ol! İşleminiz zaten şu an gerçekleştiriliyor. Lütfen bekleyin.**`, 
+                    content: `❌ **İşleminiz zaten gerçekleştiriliyor. Lütfen bekleyin ve tek bir kanalın açılmasını bekleyin.**`, 
                     flags: MessageFlags.Ephemeral 
                 }).catch(() => null);
             }
 
-            // Kilidi hemen aktif et
+            // Kilidi asenkron işlemlerden önce hemen aktifleştiriyoruz
             ticketIslemKilitleri.add(userId);
 
-            // 2. ADIM: VERİTABANI KONTROLÜ (Zaten açık kanalı var mı?)
+            // Veritabanı Kontrolü (Zaten açık kanalı var mı?)
             const eskiKanalId = await db.get(`aktif_ticket_${userId}`);
             if (eskiKanalId) {
                 const varMi = interaction.guild.channels.cache.get(eskiKanalId);
                 if (varMi) {
-                    ticketIslemKilitleri.delete(userId); // Kilidi kaldır
+                    ticketIslemKilitleri.delete(userId); // Mevcut kanalı varsa kilidi kaldırıp işlemi kesiyoruz
                     return interaction.reply({ 
-                        content: `❌ **Zaten açık bir destek talebiniz bulunuyor!** Lütfen önce mevcut biletinizi kapatın: ${varMi}`, 
+                        content: `❌ **Zaten açık bir destek talebiniz bulunuyor!** Birden fazla bilet açamazsınız: ${varMi}`, 
                         flags: MessageFlags.Ephemeral 
                     }).catch(() => null);
                 } else {
@@ -359,7 +359,8 @@ client.on('interactionCreate', async interaction => {
                 }
             }
 
-            await interaction.reply({ content: '🔄 Destek talebiniz güvenli şekilde açılıyor, lütfen bekleyin...', flags: MessageFlags.Ephemeral }).catch(() => null);
+            // İlk yanıtı gönderiyoruz
+            await interaction.reply({ content: '🔄 Destek talebiniz doğrulanıyor ve kanalınız oluşturuluyor...', flags: MessageFlags.Ephemeral }).catch(() => null);
 
             const secim = interaction.values[0];
             const kategoriIsimleri = {
@@ -404,10 +405,10 @@ client.on('interactionCreate', async interaction => {
                 const detayAciklama = kategoriAciklamalari[secim] || 'Yetkililerimiz en kısa sürede sizinle ilgilenecektir.';
 
                 const ticketEmbed = new EmbedBuilder()
-                    .setTitle('🎟️ star debug ticket — Destek Bileti')
+                    .setTitle('🎟️ Black Market — Destek Bileti')
                     .setDescription(`Merhaba ${interaction.user}, biletiniz başarıyla açıldı!\n\n${detayAciklama}`)
-                    .setColor('#8A2BE2')
-                    .setFooter({ text: 'Bileti kapatmak için aşağıdaki kırmızı butona basabilirsiniz.' })
+                    .setColor('#111111')
+                    .setFooter({ text: 'Bileti kapatmak için aşağıdaki butona basabilirsiniz.' })
                     .setTimestamp();
 
                 const closeRow = new ActionRowBuilder().addComponents(
@@ -415,16 +416,16 @@ client.on('interactionCreate', async interaction => {
                 );
 
                 await ticketKanal.send({ content: `<@&${YETKILI_ROL_ID}> • ${interaction.user}`, embeds: [ticketEmbed], components: [closeRow] }).catch(() => null);
-                await interaction.editReply({ content: `✅ Destek kanalınız açıldı: ${ticketKanal}` }).catch(() => null);
+                await interaction.editReply({ content: `✅ Destek kanalınız başarıyla oluşturuldu: ${ticketKanal}` }).catch(() => null);
                 
             } catch (error) {
                 console.error(error);
-                await interaction.editReply({ content: '❌ Kanal oluşturulurken bir hata oluştu.' }).catch(() => null);
+                await interaction.editReply({ content: '❌ Kanal oluşturulurken bir sistemsel hata oluştu.' }).catch(() => null);
             } finally {
-                // İşlem bittiğinde kilidi RAM'den temizle (1 saniye sonra güvenli sıfırlama)
+                // Her halükarda işlem tamamlandıktan 2 saniye sonra kilidi kaldırıyoruz.
                 setTimeout(() => {
                     ticketIslemKilitleri.delete(userId);
-                }, 1000);
+                }, 2000);
             }
         }
     }
@@ -463,8 +464,8 @@ client.on('interactionCreate', async interaction => {
                 const odulMetni = dropVeri.gizli ? `\`\`\`${dropVeri.gizli}\`\`\`` : `*Ödülünüz görselde belirtilmiştir!*`;
                 const dmEmbed = new EmbedBuilder()
                     .setTitle('🎁 Drop Ödülün Teslim Edildi!')
-                    .setDescription(`Tebrikler! stardebugX drobundan kaptığın ödül bilgileri:\n\n**Ödül :** \`${dropVeri.gorunen}\`\n\n**Teslimat Bilgisi:**\n${odulMetni}`)
-                    .setColor('#00FF00');
+                    .setDescription(`Tebrikler! Black Market drobundan kaptığın ödül bilgileri:\n\n**Ödül :** \`${dropVeri.gorunen}\`\n\n**Teslimat Bilgisi:**\n${odulMetni}`)
+                    .setColor('#111111');
 
                 if (dropVeri.gorsel) dmEmbed.setImage(dropVeri.gorsel);
                 await interaction.user.send({ embeds: [dmEmbed] });
@@ -472,7 +473,7 @@ client.on('interactionCreate', async interaction => {
                 const kazananEmbed = new EmbedBuilder()
                     .setTitle('🎉 DROP KAZANILDI! ⭐')
                     .setDescription(`🏆 ${interaction.user} ödülü ilk kapan kişi oldu!\n\n**Ödül:** \`${dropVeri.gorunen}\``)
-                    .setColor('#8A2BE2')
+                    .setColor('#111111')
                     .setThumbnail(interaction.user.displayAvatarURL());
 
                 await interaction.update({ embeds: [kazananEmbed], components: [] }).catch(() => null);
