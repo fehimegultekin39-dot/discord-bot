@@ -16,6 +16,9 @@ app.listen(3000);
 const YETKILI_ROL_ID = '1520564676956655738';
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1469787899712241807/1521588401864704222';
 const PREFIX = '!';
+
+// Çoklu tıklama / spam kanal açmayı RAM üzerinde engelleyen kilit havuzu
+const ticketIslem Kilitleri = new Set();
 // ==========================================
 
 function parseTurkceSure(sure) {
@@ -136,9 +139,7 @@ client.once('ready', async (c) => {
     console.log(`${c.user.tag} aktif!`);
 });
 
-// ==========================================
-//      PREFIX TABANLI KOMUTLAR (!uyarı)
-// ==========================================
+// PREFIX TABANLI KOMUTLAR (!uyarı)
 client.on('messageCreate', async message => {
     if (message.author.bot || !message.guild || !message.content.startsWith(PREFIX)) return;
 
@@ -179,12 +180,9 @@ client.on('messageCreate', async message => {
     }
 });
 
-// ==========================================
-//          SLASH KOMUT ETKİLEŞİMLERİ
-// ==========================================
+// INTERACTION OLAYLARI
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
-        
         if (['drop', 'cekilis', 'ticketpanel', 'anket', 'ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
             if (!interaction.member?.roles?.cache?.has(YETKILI_ROL_ID) && !interaction.member?.permissions?.has(PermissionsBitField.Flags.Administrator)) {
                 return interaction.reply({ content: '❌ Bu sistemi kullanmak için yetkiniz yetersiz!', flags: MessageFlags.Ephemeral }).catch(() => null);
@@ -225,7 +223,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [baslangicEmbed], components: [row] }).catch(() => null);
         }
 
-        // TICKET PANEL KOMUTU (Görsellerdeki Menü Alt Açıklamaları Birebir Eklendi)
         if (interaction.commandName === 'ticketpanel') {
             const row = new ActionRowBuilder().addComponents(
                 new StringSelectMenuBuilder()
@@ -330,28 +327,41 @@ client.on('interactionCreate', async interaction => {
     }
 
     // ==========================================
-    //      TICKET SEÇİM VE SPAM ENGELİ
+    //    TICKET MENÜ SEÇİMİ (SPAM KORUMALI)
     // ==========================================
     else if (interaction.isStringSelectMenu()) {
         if (interaction.customId === 'ticket_secim') {
-            const secim = interaction.values[0];
+            const userId = interaction.user.id;
 
-            // SPAM ENGELİ: Kullanıcının zaten açık bir ticket kanalı var mı?
-            const eskiKanalId = await db.get(`aktif_ticket_${interaction.user.id}`);
+            // 1. ADIM: RAM ÜZERİNDEN GEÇİCİ KİLİT KONTROLÜ (Milisaniyeler içinde ardı ardına basılmayı engeller)
+            if (ticketIslemKilitleri.has(userId)) {
+                return interaction.reply({ 
+                    content: `❌ **Yavaş ol! İşleminiz zaten şu an gerçekleştiriliyor. Lütfen bekleyin.**`, 
+                    flags: MessageFlags.Ephemeral 
+                }).catch(() => null);
+            }
+
+            // Kilidi hemen aktif et
+            ticketIslemKilitleri.add(userId);
+
+            // 2. ADIM: VERİTABANI KONTROLÜ (Zaten açık kanalı var mı?)
+            const eskiKanalId = await db.get(`aktif_ticket_${userId}`);
             if (eskiKanalId) {
                 const varMi = interaction.guild.channels.cache.get(eskiKanalId);
                 if (varMi) {
+                    ticketIslemKilitleri.delete(userId); // Kilidi kaldır
                     return interaction.reply({ 
-                        content: `❌ **Zaten açık bir destek talebiniz bulunuyor!** Lütfen önce mevcut biletinizi kapatın veya oradan devam edin: ${varMi}`, 
+                        content: `❌ **Zaten açık bir destek talebiniz bulunuyor!** Lütfen önce mevcut biletinizi kapatın: ${varMi}`, 
                         flags: MessageFlags.Ephemeral 
                     }).catch(() => null);
                 } else {
-                    await db.delete(`aktif_ticket_${interaction.user.id}`);
+                    await db.delete(`aktif_ticket_${userId}`);
                 }
             }
 
-            await interaction.reply({ content: '🔄 Destek talebiniz açılıyor, lütfen bekleyin...', flags: MessageFlags.Ephemeral }).catch(() => null);
+            await interaction.reply({ content: '🔄 Destek talebiniz güvenli şekilde açılıyor, lütfen bekleyin...', flags: MessageFlags.Ephemeral }).catch(() => null);
 
+            const secim = interaction.values[0];
             const kategoriIsimleri = {
                 'cekilis_kazandim': 'ticket-çekiliş',
                 'drop_kazandim': 'ticket-drop',
@@ -387,9 +397,9 @@ client.on('interactionCreate', async interaction => {
                     ]
                 });
 
-                // Kullanıcı kilidini hafızaya al
-                await db.set(`aktif_ticket_${interaction.user.id}`, ticketKanal.id);
-                await db.set(`ticket_sahibi_${ticketKanal.id}`, interaction.user.id);
+                // Kullanıcı verilerini kaydet
+                await db.set(`aktif_ticket_${userId}`, ticketKanal.id);
+                await db.set(`ticket_sahibi_${ticketKanal.id}`, userId);
 
                 const detayAciklama = kategoriAciklamalari[secim] || 'Yetkililerimiz en kısa sürede sizinle ilgilenecektir.';
 
@@ -406,16 +416,20 @@ client.on('interactionCreate', async interaction => {
 
                 await ticketKanal.send({ content: `<@&${YETKILI_ROL_ID}> • ${interaction.user}`, embeds: [ticketEmbed], components: [closeRow] }).catch(() => null);
                 await interaction.editReply({ content: `✅ Destek kanalınız açıldı: ${ticketKanal}` }).catch(() => null);
+                
             } catch (error) {
                 console.error(error);
                 await interaction.editReply({ content: '❌ Kanal oluşturulurken bir hata oluştu.' }).catch(() => null);
+            } finally {
+                // İşlem bittiğinde kilidi RAM'den temizle (1 saniye sonra güvenli sıfırlama)
+                setTimeout(() => {
+                    ticketIslemKilitleri.delete(userId);
+                }, 1000);
             }
         }
     }
 
-    // ==========================================
-    //            BUTON TIKLAMA OLAYLARI
-    // ==========================================
+    // BUTTON OLAYLARI
     else if (interaction.isButton()) {
         if (interaction.customId === 'ticket_kapat') {
             await interaction.reply({ content: '🔒 Bu bilet kanalı 5 saniye içinde kalıcı olarak siliniyor...' }).catch(() => null);
