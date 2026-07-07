@@ -52,7 +52,7 @@ const commands = [
         .addStringOption(o => o.setName('gorunen').setDescription('Kanala yansıyacak ödül ismi').setRequired(true))
         .addStringOption(o => o.setName('teslim_edilecek_odul').setDescription('Kazananın DMsine gidecek gizli hesap/kod').setRequired(false))
         .addAttachmentOption(o => o.setName('gorsel_dosyasi').setDescription('Görsel yükleyin').setRequired(false)),
-        
+
     new SlashCommandBuilder().setName('cekilis').setDescription('Yeni çekiliş başlatır.').addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)).addIntegerOption(o => o.setName('kazanan_sayisi').setDescription('Kazanan sayısı').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)),
     new SlashCommandBuilder().setName('ticketpanel').setDescription('Destek panelini gönderir.'),
     
@@ -169,7 +169,7 @@ client.on('guildMemberRemove', async (member) => {
 
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
-        
+
         // DROP KOMUTU
         if (interaction.commandName === 'drop') {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Bu komutu kullanmak için yetkiniz yok!', flags: MessageFlags.Ephemeral });
@@ -177,7 +177,7 @@ client.on('interactionCreate', async interaction => {
             const gorunenOdul = interaction.options.getString('gorunen');
             const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
             const gorselDosyası = interaction.options.getAttachment('gorsel_dosyasi');
-            
+
             if (!gizliOdul && !gorselDosyası) {
                 return interaction.reply({ content: '❌ **Hata:** Ya `teslim_edilecek_odul` bilgi girmeli ya da `gorsel_dosyasi` kısmına bir ödül fotoğrafı yüklemelisiniz!', flags: MessageFlags.Ephemeral });
             }
@@ -185,7 +185,7 @@ client.on('interactionCreate', async interaction => {
             const gorselUrl = gorselDosyası ? gorselDosyası.url : null;
             const dropId = Date.now();
             const customId = `drop_${dropId}`;
-            
+
             await db.set(`drop_data_${dropId}`, {
                 gorunen: gorunenOdul,
                 gizli: gizliOdul,
@@ -201,14 +201,14 @@ client.on('interactionCreate', async interaction => {
                     .setStyle(ButtonStyle.Success)
                     .setEmoji('🏆')
             );
-            
+
             const baslangicEmbed = new EmbedBuilder()
                 .setTitle('🎉 STARDEBUGX DROP!') 
                 .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve ödül otomatik olarak DM kutusuna gönderilir!*`)
                 .setColor('#000000')
                 .setFooter({ text: `stardebugX • Başlatan: @${interaction.user.username}` })
                 .setTimestamp();
-            
+
             await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
         }
 
@@ -232,7 +232,6 @@ client.on('interactionCreate', async interaction => {
                     ])
             );
 
-            // BAŞLIK BÜYÜK HARFLERLE "STAR DEBUG TICKET" OLARAK GÜNCELLENDİ
             const embed = new EmbedBuilder()
                 .setTitle('⭐ STAR DEBUG TICKET') 
                 .setDescription('Merhaba! Size nasıl yardımcı olabiliriz?\n\n⬇️ **Aşağıdan talebine uygun kategoriyi seçerek ticket açabilirsin.**')
@@ -443,7 +442,7 @@ client.on('interactionCreate', async interaction => {
                 });
 
                 const ticketEmbed = new EmbedBuilder()
-                    .setTitle('🎟️ STAR DEBUG TICKET') // Buradaki başlığı da büyük harfle senkronize ettim
+                    .setTitle('🎟️ STAR DEBUG TICKET')
                     .setDescription(`Merhaba ${interaction.user}, biletiniz başarıyla açıldı!\nYetkililerimiz en kısa sürede sizinle ilgilenecektir.\n\n**Seçtiğiniz Kategori:** \`${canalAdi.split('-')[1].toUpperCase()}\``)
                     .setColor('#000000')
                     .setFooter({ text: 'Bileti kapatmak için aşağıdaki butona tıklayabilirsiniz.' })
@@ -479,40 +478,26 @@ client.on('interactionCreate', async interaction => {
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const dropVeri = await db.get(`drop_data_${dropId}`);
-
             if (!dropVeri) return interaction.reply({ content: '❌ Bu drop verisine ulaşılamadı.', flags: MessageFlags.Ephemeral });
-            if (dropVeri.bitti === true) return interaction.reply({ content: '❌ Bu drop ödülü daha önce başkası tarafından kapılmış!', flags: MessageFlags.Ephemeral });
-
+            if (dropVeri.bitti === true) return interaction.reply({ content: '❌ Bu drop ödülü zaten kapılmış.', flags: MessageFlags.Ephemeral });
             await db.set(`drop_data_${dropId}.bitti`, true);
-
             try {
-                const odulMetni = dropVeri.gizli ? `\`\`\`${dropVeri.gizli}\`\`\`` : `*Ödülünüz aşağıdaki görselde yer almaktadır!* ⬇️`;
+                const dosyaIcerigi = dropVeri.gizli || "İçerik bulunamadı.";
+                const buffer = Buffer.from(dosyaIcerigi, 'utf-8');
 
-                const dmEmbed = new EmbedBuilder()
-                    .setTitle('🎁 Drop Ödülün Teslim Edildi!')
-                    .setDescription(`Merhaba! Sunucudaki droptan başarıyla kaptığın ödül aşağıdadır:\n\n**Ödül :** \`${dropVeri.gorunen}\`\n**Teslim Edilen Bilgi:**\n${odulMetni}`)
-                    .setColor('#000000')
-                    .setFooter({ text: 'stardebugX Otomatik Teslimat' })
-                    .setTimestamp();
-
-                if (dropVeri.gorsel) dmEmbed.setImage(dropVeri.gorsel);
-
-                await interaction.user.send({ embeds: [dmEmbed] });
-
+                await interaction.user.send({
+                    content: `🎉 Tebrikler! **${dropVeri.gorunen}** ödülünü kazandın. Dosyan ektedir:`,
+                    files: [{ attachment: buffer, name: 'odul.txt' }]
+                });
                 const kazananEmbed = new EmbedBuilder()
-                    .setTitle('🎉 DROP KAZANILDI! ⭐')
-                    .setDescription(`🏆 ${interaction.user}\n**ödülü kaptı!**`)
+                    .setTitle('⭐ StardebugX | DROP KAZANILDI')
+                    .setDescription(`🏆 ${interaction.user} ödülü kaptı!\n\n📩 **Ödül, DM üzerinden .txt olarak gönderildi.**`)
                     .setColor('#000000')
-                    .addFields(
-                        { name: '🎁 Ödül', value: `\`${dropVeri.gorunen}\``, inline: true }, 
-                        { name: '📩 Teslimat', value: 'Ödül otomatik olarak **DM kutusuna gönderildi!** ✅', inline: false }
-                    )
                     .setTimestamp();
-
                 await interaction.update({ embeds: [kazananEmbed], components: [] });
-            } catch (dmHata) {
+            } catch (e) {
                 await db.set(`drop_data_${dropId}.bitti`, false); 
-                return interaction.reply({ content: '❌ **Ödül Alınamadı:** DM kutun kapalı!', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ DM kutun kapalı olduğu için ödülü gönderemedim!', flags: MessageFlags.Ephemeral });
             }
         }
 
