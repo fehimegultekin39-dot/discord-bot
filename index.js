@@ -13,7 +13,7 @@ app.listen(3000);
 const YETKILI_ROL_ID = '1520564676956655738';       
 const DESTEK_ROL_ID = '1520564676956655738';         
 const TICKET_KANAL_ID = '1521588401864704222';       
-const GELEN_GIDEN_KANAL_ID = 'KANAL_ID_BURAYA'; // Sadece çıkış mesajları için kanal ID'si yazabilirsin
+const GELEN_GIDEN_KANAL_ID = 'KANAL_ID_BURAYA'; 
 // =============================================================
 
 function parseTurkceSure(sure) {
@@ -138,7 +138,7 @@ async function cekilisBitir(channelId, messageId) {
     );
 
     await guncelMesaj.edit({ embeds: [sonEmbed], components: [ticketRow] });
-    await kanal.send(`🎉 **Tebrikler!** ${kazananMention} **kazandı!** 🖤`);
+    await kanal.send(`🎉 **Tebrikler!** ${kazananMention} **kazandı!** ⭐`);
 }
 
 client.once('ready', async (c) => {
@@ -153,7 +153,7 @@ client.once('ready', async (c) => {
     console.log(`${c.user.tag} aktif!`);
 });
 
-// SUNUCUDAN BIRI AYRILDIGINDA (Yeni gelen kısmı tamamen kaldırıldı)
+// SUNUCUDAN BIRI AYRILDIGINDA
 client.on('guildMemberRemove', async (member) => {
     const kanal = member.guild.channels.cache.get(GELEN_GIDEN_KANAL_ID);
     if (kanal) {
@@ -221,19 +221,20 @@ client.on('interactionCreate', async interaction => {
                     .setCustomId('ticket_secim')
                     .setPlaceholder('Seçim yap')
                     .addOptions([
-                        { label: 'Çekiliş Kazandım', value: 'cekilis_kazandim', emoji: '💟' },
-                        { label: 'Drop Kazandım', value: 'drop_kazandim', emoji: '🎁' },
-                        { label: 'Hesap Satın Alıcam', value: 'hesap_satinal', emoji: '💲' },
-                        { label: 'Partnerlik & İşbirliği', value: 'partnerlik', emoji: '🤝' },
-                        { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '🔵' },
-                        { label: 'Teknik Destek', value: 'teknik_destek', emoji: '🔧' },
-                        { label: 'Şikayet & Öneri', value: 'sikayet_oneri', emoji: '📝' },
-                        { label: 'Diğer', value: 'diger', emoji: '❓' }
+                        { label: 'Çekiliş Kazandım', value: 'cekilis_kazandim', description: 'Kazandığınız çekiliş ödülünü talep etmek için burayı kullanın.', emoji: '❤️' },
+                        { label: 'Drop Kazandım', value: 'drop_kazandim', description: 'Yayın veya etkinliklerden kazandığınız dropları teslim alın.', emoji: '🎁' },
+                        { label: 'Hesap Satın Alıcam', value: 'hesap_satinal', description: 'Güvenli hesap satın alma, fiyat ve stok bilgisi almak için.', emoji: '💲' },
+                        { label: 'Partnerlik & İşbirliği', value: 'partnerlik', description: 'Ortaklık, reklam ya da sponsorluk görüşmeleri yapmak için.', emoji: '🤝' },
+                        { label: 'Yetkili Alım', value: 'yetkili_alim', description: 'Ekibimize katılmak ve yetkili olmak istiyorsanız başvurun.', emoji: '🔵' },
+                        { label: 'Teknik Destek', value: 'teknik_destek', description: 'Yaşadığınız problemlerle ilgili teknik destek talebi oluşturun.', emoji: '🔧' },
+                        { label: 'Şikayet & Öneri', value: 'sikayet_oneri', description: 'Sunucu içi şikayetlerinizi veya önerilerinizi bize iletin.', emoji: '📝' },
+                        { label: 'Diğer', value: 'diger', description: 'Diğer tüm konular ve sorularınız için bu kategoriyi seçin.', emoji: '❓' }
                     ])
             );
 
+            // BAŞLIK BÜYÜK HARFLERLE "STAR DEBUG TICKET" OLARAK GÜNCELLENDİ
             const embed = new EmbedBuilder()
-                .setTitle('🖤 stardebugX — Destek Merkezi') 
+                .setTitle('⭐ STAR DEBUG TICKET') 
                 .setDescription('Merhaba! Size nasıl yardımcı olabiliriz?\n\n⬇️ **Aşağıdan talebine uygun kategoriyi seçerek ticket açabilirsin.**')
                 .setColor('#000000')
                 .setFooter({ text: 'stardebugX • @r2xzzs' });
@@ -442,7 +443,7 @@ client.on('interactionCreate', async interaction => {
                 });
 
                 const ticketEmbed = new EmbedBuilder()
-                    .setTitle('🎟️ stardebugX — Destek Bileti')
+                    .setTitle('🎟️ STAR DEBUG TICKET') // Buradaki başlığı da büyük harfle senkronize ettim
                     .setDescription(`Merhaba ${interaction.user}, biletiniz başarıyla açıldı!\nYetkililerimiz en kısa sürede sizinle ilgilenecektir.\n\n**Seçtiğiniz Kategori:** \`${canalAdi.split('-')[1].toUpperCase()}\``)
                     .setColor('#000000')
                     .setFooter({ text: 'Bileti kapatmak için aşağıdaki butona tıklayabilirsiniz.' })
@@ -499,7 +500,7 @@ client.on('interactionCreate', async interaction => {
                 await interaction.user.send({ embeds: [dmEmbed] });
 
                 const kazananEmbed = new EmbedBuilder()
-                    .setTitle('🎉 DROP KAZANILDI! 🖤')
+                    .setTitle('🎉 DROP KAZANILDI! ⭐')
                     .setDescription(`🏆 ${interaction.user}\n**ödülü kaptı!**`)
                     .setColor('#000000')
                     .addFields(
