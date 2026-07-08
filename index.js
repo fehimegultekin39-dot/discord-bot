@@ -152,7 +152,6 @@ client.once('ready', async (c) => {
     console.log(`${c.user.tag} aktif!`);
 });
 
-// SUNUCUDAN BIRI AYRILDIGINDA
 client.on('guildMemberRemove', async (member) => {
     const kanal = member.guild.channels.cache.get(GELEN_GIDEN_KANAL_ID);
     if (kanal) {
@@ -169,21 +168,19 @@ client.on('guildMemberRemove', async (member) => {
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
 
-        // ===== DROP KOMUTU (Dosya Yükleme Özelliğiyle) =====
         if (interaction.commandName === 'drop') {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Yetkiniz yok!', flags: MessageFlags.Ephemeral });
 
             const dosya = interaction.options.getAttachment('dosya');
             const gorunenOdul = interaction.options.getString('gorunen');
 
-            // Dosyayı indir ve içeriğini oku
             const response = await fetch(dosya.url);
             const dosyaIcerigi = await response.text();
 
             const dropId = Date.now();
             await db.set(`drop_data_${dropId}`, {
                 gorunen: gorunenOdul,
-                gizli: dosyaIcerigi, // Dosyanın içeriği direkt kaydediliyor
+                gizli: dosyaIcerigi,
                 bitti: false
             });
 
@@ -199,7 +196,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
         }
 
-        // TICKET PANEL
         if (interaction.commandName === 'ticketpanel') {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Bu komutu kullanmak için yetkiniz yok!', flags: MessageFlags.Ephemeral });
 
@@ -228,7 +224,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
-        // UYARI SİSTEMİ
         if (interaction.commandName === 'uyari') {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Bu komutu kullanmak için yetkiniz yok!', flags: MessageFlags.Ephemeral });
 
@@ -284,7 +279,6 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // ÇEKİLİŞ SİSTEMİ
         if (interaction.commandName === 'cekilis') {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Bu komutu kullanmak için yetkiniz yok!', flags: MessageFlags.Ephemeral });
             await interaction.deferReply();
@@ -316,7 +310,7 @@ client.on('interactionCreate', async interaction => {
 
             const embed = new EmbedBuilder()
                 .setTitle('🎉 STARDEBUGX ÇEKİLİŞ 🎉')
-                .setDescription(`**Ödül:** \`${prize}\`\n**Kazanan Sayısı:** \`${count}\`\n**Başlatan:** ${interaction.user}\n\n📅 **Başlangıç:** <t:${simdi}:F>\n⏳ **Bitiş:** <t:${bitis}:R> (<t:${bitis}:F>)`)
+                .setDescription(`**Ödül:** \`${prize}\`\n**Kazanan Sayısı:** \`${count}\`\n**Başlatan:** ${interaction.user}\n\n📅 **Başlangıç:** <t:${simni}:F>\n⏳ **Bitiş:** <t:${bitis}:R> (<t:${bitis}:F>)`)
                 .setColor('#000000')
                 .setFooter({ text: `stardebugX • Başlatan: @${interaction.user.username} • 🎉 emojisine tıklayın!` })
                 .setTimestamp();
@@ -328,7 +322,7 @@ client.on('interactionCreate', async interaction => {
                 channelId: interaction.channel.id,
                 prize: prize,
                 count: count,
-                simdi: simdi,
+                simni: simni,
                 bitisMs: bitisMs,
                 bitti: false,
                 baslatanId: interaction.user.id,
@@ -340,7 +334,6 @@ client.on('interactionCreate', async interaction => {
             }, msDur);
         }
 
-        // MODERASYON KOMUTLARI
         if (['ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Yetkiniz yok!', flags: MessageFlags.Ephemeral });
 
@@ -373,7 +366,6 @@ client.on('interactionCreate', async interaction => {
             if (interaction.commandName === 'unmute') { const m = interaction.options.getMember('kisi'); await m.timeout(null); await interaction.reply(`${m} susturması kaldırıldı.`); }
         }
 
-        // ANKET SİSTEMİ
         if (interaction.commandName === 'anket') {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Yetkiniz yok!', flags: MessageFlags.Ephemeral });
             const soru = interaction.options.getString('soru');
@@ -398,7 +390,6 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // SELECT MENÜLER (Ticket Sistemi)
     else if (interaction.isStringSelectMenu()) {
         if (interaction.customId === 'ticket_secim') {
             const secim = interaction.values[0];
@@ -451,9 +442,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // BUTONLAR (Drop, Ticket Kapatma, Reroll)
     else if (interaction.isButton()) {
-        // Ticket Kapatma
         if (interaction.customId === 'ticket_kapat') {
             await interaction.reply({ content: '🔒 Bu bilet kanalı 5 saniye içinde siliniyor...' });
             setTimeout(async () => {
@@ -462,7 +451,7 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        // ===== DROP BUTONU (Dosya Gönderme) =====
+        // ===== DÜZELTİLMİŞ DROP BUTONU =====
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const dropVeri = await db.get(`drop_data_${dropId}`);
@@ -470,30 +459,33 @@ client.on('interactionCreate', async interaction => {
             if (!dropVeri) return interaction.reply({ content: '❌ Hata.', flags: MessageFlags.Ephemeral });
             if (dropVeri.bitti === true) return interaction.reply({ content: '❌ Bu ödül çoktan kapıldı!', flags: MessageFlags.Ephemeral });
 
+            // 1. ADIM: Hemen "bitti" olarak işaretle (Yarış durumunu önlemek için)
             await db.set(`drop_data_${dropId}.bitti`, true);
 
-            try {
-                // Dosya içeriğini Buffer'a çevir ve gönder
-                const buffer = Buffer.from(dropVeri.gizli, 'utf-8');
+            // 2. ADIM: Mesajı anında güncelle ve BUTONU KALDIR (DM başarısız olsa bile buton gitmiş olur)
+            const kazananEmbed = new EmbedBuilder()
+                .setTitle('⭐ StardebugX | DROP KAZANILDI')
+                .setDescription(`🏆 ${interaction.user} ödülü kaptı!\n\n📩 **Ödül, DM üzerinden .txt dosyası olarak gönderildi.**`)
+                .setColor('#000000');
 
+            await interaction.update({ embeds: [kazananEmbed], components: [] });
+
+            // 3. ADIM: Şimdi DM göndermeyi dene
+            try {
+                const buffer = Buffer.from(dropVeri.gizli, 'utf-8');
                 await interaction.user.send({
                     content: `🎉 Tebrikler! **${dropVeri.gorunen}** ödülünü kazandın.`,
                     files: [{ attachment: buffer, name: `${dropVeri.gorunen}.txt` }]
                 });
-
-                const kazananEmbed = new EmbedBuilder()
-                    .setTitle('⭐ StardebugX | DROP KAZANILDI')
-                    .setDescription(`🏆 ${interaction.user} ödülü kaptı!\n\n📩 **Ödül, DM üzerinden .txt dosyası olarak gönderildi.**`)
-                    .setColor('#000000');
-
-                await interaction.update({ embeds: [kazananEmbed], components: [] });
             } catch (e) {
-                await db.set(`drop_data_${dropId}.bitti`, false);
-                return interaction.reply({ content: '❌ DM kutun kapalı!', flags: MessageFlags.Ephemeral });
+                // DM kapalıysa kullanıcıya gizli mesaj gönder
+                return interaction.followUp({ 
+                    content: '❌ DM kutun kapalı olduğu için ödülü gönderemedim! Lütfen DMlerini aç ve yetkililere ulaş.', 
+                    flags: MessageFlags.Ephemeral 
+                });
             }
         }
 
-        // Reroll Sistemi
         if (interaction.customId.startsWith('cekilis_reroll_')) {
             const messageId = interaction.customId.replace('cekilis_reroll_', '');
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID) && !interaction.member.permissions.has('Administrator')) {
