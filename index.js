@@ -13,7 +13,7 @@ app.listen(3000);
 const YETKILI_ROL_ID = '1520564676956655738';
 const DESTEK_ROL_ID = '1520564676956655738';
 const TICKET_KANAL_ID = '1521588401864704222';
-const GELEN_GIDEN_KANAL_ID = 'KANAL_ID_BURAYA'; // Burayı güncelle!
+const GELEN_GIDEN_KANAL_ID = 'KANAL_ID_BURAYA'; // BURAYI GÜNCELLE!
 // =============================================================
 
 function parseTurkceSure(sure) {
@@ -175,11 +175,14 @@ client.on('guildMemberRemove', async (member) => {
     }
 });
 
-// ANA HATA YÖNETİMİ - Botun "düşünüyor" modunda takılmasını engeller
+// ========== ANA İŞLEM HATASI YÖNETİMİ ==========
 client.on('interactionCreate', async interaction => {
     try {
+        
+        // ========== SLASH KOMUTLAR ==========
         if (interaction.isChatInputCommand()) {
 
+            // DROP KOMUTU
             if (interaction.commandName === 'drop') {
                 if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Yetkiniz yok!', flags: MessageFlags.Ephemeral });
 
@@ -208,6 +211,7 @@ client.on('interactionCreate', async interaction => {
                 await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
             }
 
+            // TICKET PANELİ
             else if (interaction.commandName === 'ticketpanel') {
                 if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Bu komutu kullanmak için yetkiniz yok!', flags: MessageFlags.Ephemeral });
 
@@ -236,6 +240,7 @@ client.on('interactionCreate', async interaction => {
                 await interaction.reply({ embeds: [embed], components: [row] });
             }
 
+            // UYARI SİSTEMİ
             else if (interaction.commandName === 'uyari') {
                 if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Bu komutu kullanmak için yetkiniz yok!', flags: MessageFlags.Ephemeral });
 
@@ -291,10 +296,11 @@ client.on('interactionCreate', async interaction => {
                 }
             }
 
+            // ÇEKİLİŞ KOMUTU - DÜZELTİLDİ!
             else if (interaction.commandName === 'cekilis') {
                 if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Bu komutu kullanmak için yetkiniz yok!', flags: MessageFlags.Ephemeral });
                 
-                await interaction.deferReply(); // Önce "düşünüyor" göster, sonra cevapla
+                await interaction.deferReply(); 
 
                 const durInput = interaction.options.getString('sure');
                 const count = interaction.options.getInteger('kazanan_sayisi');
@@ -323,11 +329,11 @@ client.on('interactionCreate', async interaction => {
                     return interaction.editReply({ content: '❌ Geçersiz süre formatı! (Örnek: 30sn, 15dk, 12saat, 1gün)' });
                 }
 
-                const simdi = Math.floor(Date.now() / 1000); // DÜZELTİLDİ: simdi
+                const simdi = Math.floor(Date.now() / 1000); // DÜZELTİLMİŞ
                 const bitis = simdi + Math.floor(msDur / 1000);
                 const bitisMs = Date.now() + msDur;
 
-                // DÜZELTİLDİ: simni -> simdi (Buradaydı ana hata!)
+                // DÜZELTİLMİŞ: simni -> simdi
                 const embed = new EmbedBuilder()
                     .setTitle('🎉 STARDEBUGX ÇEKİLİŞ 🎉')
                     .setDescription(`**Ödül:** \`${prize}\`\n**Kazanan Sayısı:** \`${count}\`\n**Başlatan:** ${interaction.user}\n\n📅 **Başlangıç:** <t:${simdi}:F>\n⏳ **Bitiş:** <t:${bitis}:R> (<t:${bitis}:F>)`)
@@ -342,7 +348,7 @@ client.on('interactionCreate', async interaction => {
                     channelId: interaction.channel.id,
                     prize: prize,
                     count: count,
-                    simdi: simdi, // Düzeltildi
+                    simdi: simdi, // DÜZELTİLMİŞ
                     bitisMs: bitisMs,
                     bitti: false,
                     baslatanId: interaction.user.id,
@@ -354,6 +360,7 @@ client.on('interactionCreate', async interaction => {
                 }, msDur);
             }
 
+            // BAN/UNBAN/MUTE/UNMUTE
             else if (['ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
                 if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Yetkiniz yok!', flags: MessageFlags.Ephemeral });
 
@@ -402,6 +409,7 @@ client.on('interactionCreate', async interaction => {
                 }
             }
 
+            // ANKET
             else if (interaction.commandName === 'anket') {
                 if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Yetkiniz yok!', flags: MessageFlags.Ephemeral });
                 const soru = interaction.options.getString('soru');
@@ -426,6 +434,7 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
+        // ========== SELECT MENÜLER ==========
         else if (interaction.isStringSelectMenu()) {
             if (interaction.customId === 'ticket_secim') {
                 const secim = interaction.values[0];
@@ -478,15 +487,62 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
+        // ========== BUTONLAR ==========
         else if (interaction.isButton()) {
+            
+            // ★★★ TİCKET KAPATMA - DÜZELTİLMİŞ VE HIZLANDIRILMIŞ ★★★
             if (interaction.customId === 'ticket_kapat') {
-                await interaction.reply({ content: '🔒 Bu bilet kanalı 5 saniye içinde siliniyor...' });
-                setTimeout(async () => {
-                    await interaction.channel.delete().catch(() => null);
-                }, 5000);
+                try {
+                    // 1. HEMEN Yanıt ver (kullanıcıyı bekleme)
+                    await interaction.reply({ 
+                        content: '⏳ **Biletiniz kapatılıyor...**\nKanal 3 saniye içinde silinecek.', 
+                        flags: MessageFlags.Ephemeral 
+                    });
+                    
+                    console.log(`[🎫] ${interaction.user.tag} tarafından #${interaction.channel.name} ticket kapatıldı`);
+
+                    // 2. 3 SANİYE SONRA SIL (HIZLI MOD)
+                    setTimeout(async () => {
+                        try {
+                            const kanal = interaction.channel;
+                            
+                            // Yetki kontrolü
+                            if (!kanal.deletable) {
+                                console.error('[❌] Bot bu kanalı silemiyor (yetki eksik)');
+                                return await interaction.followUp({ 
+                                    content: '❌ **Hata:** Bota bu kanalı silme yetkisi verilmedi! Lütfen sunucu yöneticisine bildirin.', 
+                                    flags: MessageFlags.Ephemeral 
+                                }).catch(() => {});
+                            }
+                            
+                            // Silme işlemini gerçekleştir
+                            await kanal.delete(`Ticket: ${interaction.user.tag} tarafından kapatıldı`);
+                            console.log(`[✅] Ticket başarıyla silindi.`);
+                            
+                        } catch (silmeHatasi) {
+                            console.error('[❌] Ticket silme hatası:', silmeHatasi.message);
+                            
+                            // Eğer silinemediyorsa kanala uyarı gönder
+                            try {
+                                const uyarıEmbed = new EmbedBuilder()
+                                    .setTitle('⚠️ TICKET KAPATILAMADI')
+                                    .setDescription(`Bot bu kanalı otomatik silemedi!\n**Neden:** \`${silmeHatasi.message}\`\n\n⚡ **Manuel Çözüm:** Bu kanala sağ tıklayıp → **Kanalı Sil** diyebilirsiniz.`)
+                                    .setColor('#FF0000')
+                                    .setTimestamp();
+                                    
+                                await interaction.channel.send({ embeds: [uyarıEmbed] }).catch(() => {});
+                                await interaction.followUp({ content: '⚠️ Otomatik silme başarısız oldu! Lütfen manuel silin.', flags: MessageFlags.Ephemeral }).catch(() => {});
+                            } catch(e) {}
+                        }
+                    }, 3000); // ★ 3 SANİYE ★
+                    
+                } catch (err) {
+                    console.error('[HATA] Ticket kapatma yanıtı:', err);
+                }
                 return;
             }
 
+            // DROP BUTonu
             if (interaction.customId.startsWith('drop_')) {
                 const dropId = interaction.customId.replace('drop_', '');
                 const dropVeri = await db.get(`drop_data_${dropId}`);
@@ -517,6 +573,7 @@ client.on('interactionCreate', async interaction => {
                 }
             }
 
+            // ÇEKİLİŞ REROLL
             if (interaction.customId.startsWith('cekilis_reroll_')) {
                 const messageId = interaction.customId.replace('cekilis_reroll_', '');
                 if (!interaction.member.roles.cache.has(YETKILI_ROL_ID) && !interaction.member.permissions.has('Administrator')) {
@@ -527,7 +584,7 @@ client.on('interactionCreate', async interaction => {
                 await cekilisBitir(interaction.channel.id, messageId);
             }
             
-            // Anket Butonları
+            // ANKET OY BUTONLARI
             if (interaction.customId.startsWith('anket_evet_') || interaction.customId.startsWith('anket_hayir_')) {
                 const anketId = interaction.customId.replace('anket_evet_', '').replace('anket_hayir_', '');
                 const tur = interaction.customId.includes('evet') ? 'evet' : 'hayir';
@@ -535,7 +592,7 @@ client.on('interactionCreate', async interaction => {
                 let oyListesi = await db.get(`anket_${anketId}_${tur}`) || [];
                 
                 if (oyListesi.includes(interaction.user.id)) {
-                    return interaction.reply({ content: '❌ Zaten bu ankete oy verdiniz!', flags: MessageFlags.Ephemeral, ephemeral: true });
+                    return interaction.reply({ content: '❌ Zaten bu ankete oy verdiniz!', flags: MessageFlags.Ephemeral });
                 }
                 
                 oyListesi.push(interaction.user.id);
@@ -555,11 +612,11 @@ client.on('interactionCreate', async interaction => {
                     .setTimestamp();
                 
                 await interaction.update({ embeds: [yeniEmbed] });
-                await interaction.followUp({ content: '✅ Oyunuz kaydedildi!', flags: MessageFlags.Ephemeral, ephemeral: true });
+                await interaction.followUp({ content: '✅ Oyunuz kaydedildi!', flags: MessageFlags.Ephemeral });
             }
         }
     } catch (error) {
-        console.error('[HATA] Interaction hatası:', error);
+        console.error('[GENEL HATA]', error);
         try {
             if (interaction.replied || interaction.deferred) {
                 await interaction.editReply({ content: `❌ Bir hata oluştu: ${error.message}` }).catch(() => {});
@@ -567,7 +624,7 @@ client.on('interactionCreate', async interaction => {
                 await interaction.reply({ content: `❌ Bir hata oluştu: ${error.message}`, flags: MessageFlags.Ephemeral }).catch(() => {});
             }
         } catch (e) {
-            console.error('[HATA] Hata mesajı gönderilemedi:', e);
+            console.error('[HATA MESAJI]', e);
         }
     }
 });
