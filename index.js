@@ -464,8 +464,14 @@ client.on('interactionCreate', async interaction => {
             if (dropVeri.bitti === true) return interaction.reply({ content: '❌ Bu ödül çoktan kapıldı!', flags: MessageFlags.Ephemeral });
             await db.set(`drop_data_${dropId}.bitti`, true);
             try {
-                // İÇERİĞİ DÜZENLİ LİSTE HALİNE GETİRME (Senin gönderdiğin örnekteki gibi)
-                const dosyaIcerigi = `discord.gg/stardebugx\ndiscord.gg/stardebugx\n\n${dropVeri.gizli}`;
+                // VERİYİ DÜZENLEME:
+                // Eğer verilerinde ayraç olarak bir tab (\t) veya özel boşluk varsa onları \n ile değiştiriyoruz.
+                // Eğer verin direkt tek satırda birikiyorsa, bu işlem veriyi satırlara böler.
+                let formatliIcerik = dropVeri.gizli.replace(/\\n/g, '\n'); // Verideki olası \n stringlerini gerçek satır sonuna çevirir
+                
+                // Eğer verin "TAB" boşluklarıyla ayrılmışsa (genelde bu tarz dosyalarda öyle olur), onları satır sonuna çevirelim:
+                // formatliIcerik = formatliIcerik.replace(/\t/g, '\n'); 
+                const dosyaIcerigi = `discord.gg/stardebugx\ndiscord.gg/stardebugx\n\n${formatliIcerik}`;
                 
                 const buffer = Buffer.from(dosyaIcerigi, 'utf-8');
                 
