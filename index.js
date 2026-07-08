@@ -170,45 +170,27 @@ client.on('guildMemberRemove', async (member) => {
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
 
-        // DROP KOMUTU
+        // DROP KOMUTU (Görseldeki gibi düzenli formatta)
         if (interaction.commandName === 'drop') {
-            if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Bu komutu kullanmak için yetkiniz yok!', flags: MessageFlags.Ephemeral });
-
+            if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Yetkiniz yok!', flags: MessageFlags.Ephemeral });
             const gorunenOdul = interaction.options.getString('gorunen');
             const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
-            const gorselDosyası = interaction.options.getAttachment('gorsel_dosyasi');
-
-            if (!gizliOdul && !gorselDosyası) {
-                return interaction.reply({ content: '❌ **Hata:** Ya `teslim_edilecek_odul` bilgi girmeli ya da `gorsel_dosyasi` kısmına bir ödül fotoğrafı yüklemelisiniz!', flags: MessageFlags.Ephemeral });
-            }
-
-            const gorselUrl = gorselDosyası ? gorselDosyası.url : null;
+            
             const dropId = Date.now();
-            const customId = `drop_${dropId}`;
-
             await db.set(`drop_data_${dropId}`, {
                 gorunen: gorunenOdul,
                 gizli: gizliOdul,
-                gorsel: gorselUrl,
-                baslatan: interaction.user.username,
                 bitti: false
             });
-
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId(customId)
-                    .setLabel('ÖDÜLÜ KAP!')
-                    .setStyle(ButtonStyle.Success)
-                    .setEmoji('🏆')
+                new ButtonBuilder().setCustomId(`drop_${dropId}`).setLabel('ÖDÜLÜ KAP!').setStyle(ButtonStyle.Success).setEmoji('🏆')
             );
-
+            
             const baslangicEmbed = new EmbedBuilder()
-                .setTitle('🎉 STARDEBUGX DROP!') 
-                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve ödül otomatik olarak DM kutusuna gönderilir!*`)
-                .setColor('#000000')
-                .setFooter({ text: `stardebugX • Başlatan: @${interaction.user.username}` })
-                .setTimestamp();
-
+                .setTitle('⭐ StardebugX DROP!') 
+                .setDescription(`Ödül: **${gorunenOdul}**\n\n*Butona basan ödülü .txt dosyası olarak alır.*`)
+                .setColor('#000000');
+            
             await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
         }
 
@@ -474,26 +456,27 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        // DROP ÖDÜLÜ KAPMA
+        // BUTON ETKİLEŞİMİ (Dosyayı görseldeki düzende oluşturur)
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const dropVeri = await db.get(`drop_data_${dropId}`);
-            if (!dropVeri) return interaction.reply({ content: '❌ Bu drop verisine ulaşılamadı.', flags: MessageFlags.Ephemeral });
-            if (dropVeri.bitti === true) return interaction.reply({ content: '❌ Bu drop ödülü zaten kapılmış.', flags: MessageFlags.Ephemeral });
+            if (!dropVeri) return interaction.reply({ content: '❌ Hata.', flags: MessageFlags.Ephemeral });
+            if (dropVeri.bitti === true) return interaction.reply({ content: '❌ Bu ödül çoktan kapıldı!', flags: MessageFlags.Ephemeral });
             await db.set(`drop_data_${dropId}.bitti`, true);
             try {
-                const dosyaIcerigi = dropVeri.gizli || "İçerik bulunamadı.";
+                // İÇERİĞİ DÜZENLİ LİSTE HALİNE GETİRME (Senin gönderdiğin örnekteki gibi)
+                const dosyaIcerigi = `discord.gg/stardebugx\ndiscord.gg/stardebugx\n\n${dropVeri.gizli}`;
+                
                 const buffer = Buffer.from(dosyaIcerigi, 'utf-8');
-
+                
                 await interaction.user.send({
-                    content: `🎉 Tebrikler! **${dropVeri.gorunen}** ödülünü kazandın. Dosyan ektedir:`,
-                    files: [{ attachment: buffer, name: 'odul.txt' }]
+                    content: `🎉 Tebrikler! **${dropVeri.gorunen}** ödülünü kazandın.`,
+                    files: [{ attachment: buffer, name: `${dropVeri.gorunen}.txt` }]
                 });
                 const kazananEmbed = new EmbedBuilder()
                     .setTitle('⭐ StardebugX | DROP KAZANILDI')
-                    .setDescription(`🏆 ${interaction.user} ödülü kaptı!\n\n📩 **Ödül, DM üzerinden .txt olarak gönderildi.**`)
-                    .setColor('#000000')
-                    .setTimestamp();
+                    .setDescription(`🏆 ${interaction.user} ödülü kaptı!\n\n📩 **Ödül, DM üzerinden düzenli .txt formatında gönderildi.**`)
+                    .setColor('#000000');
                 await interaction.update({ embeds: [kazananEmbed], components: [] });
             } catch (e) {
                 await db.set(`drop_data_${dropId}.bitti`, false); 
