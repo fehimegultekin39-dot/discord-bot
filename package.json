@@ -1,18 +1,23 @@
 {
-  "name": "blackmarket-bot",
+  "name": "nexus",
   "version": "1.0.0",
-  "description": "Black Market Automation Bot",
+  "description": "Nexus Automation and Management Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "engines": {
-    "node": "20.20.2"
-  },
+  "keywords": [
+    "discord",
+    "bot",
+    "nexus",
+    "ticket",
+    "giveaway"
+  ],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "better-sqlite3": "^11.1.2",
-    "discord.js": "^14.15.3",
+    "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",
-    "quick.db": "^9.1.7"
+    "express": "^4.18.3"
   }
 }
