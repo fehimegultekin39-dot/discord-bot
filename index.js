@@ -1,19 +1,5 @@
 require('dotenv').config();
-const { 
-    Client, 
-    GatewayIntentBits, 
-    ActionRowBuilder, 
-    ButtonBuilder, 
-    ButtonStyle, 
-    EmbedBuilder, 
-    REST, 
-    Routes, 
-    SlashCommandBuilder, 
-    StringSelectMenuBuilder, 
-    MessageFlags, 
-    PermissionsBitField, 
-    AttachmentBuilder 
-} = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder, StringSelectMenuBuilder, MessageFlags, PermissionsBitField, AttachmentBuilder } = require('discord.js');
 const { QuickDB } = require('quick.db');
 const db = new QuickDB();
 const express = require('express');
@@ -23,7 +9,7 @@ const app = express();
 app.get('/', (req, res) => res.send('Bot 7/24 Aktif!'));
 app.listen(3000);
 
-// 🛠️ SUNUCU AYARLARI
+// 🛠️ SUNUCU AYARLARI (Kendi ID'lerinizle Değiştirin)
 const DESTEK_ROL_ID = '1520515365786882178';
 const YETKILI_ROL_ID = '1520515365786882178';
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1520473034694066361/1520530500022960198';
@@ -40,12 +26,7 @@ function parseTurkceSure(sure) {
 }
 
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent, 
-        GatewayIntentBits.GuildMessageReactions
-    ]
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions]
 });
 
 // SLASH KOMUT TANIMLAMALARI
@@ -60,7 +41,7 @@ const commands = [
         
     new SlashCommandBuilder().setName('cekilis').setDescription('Yeni çekiliş başlatır.').addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)).addIntegerOption(o => o.setName('kazanan_sayisi').setDescription('Kazanan sayısı').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)),
     new SlashCommandBuilder().setName('ticketpanel').setDescription('Destek panelini gönderir.'),
-        
+    
     new SlashCommandBuilder()
         .setName('vouch')
         .setDescription('Kullanıcıya vouch verir (Herkes kullanabilir).')
@@ -274,7 +255,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
-        // VOUCH (Sıfırdan başlama mantığı entegre)
+        // VOUCH
         if (interaction.commandName === 'vouch') {
             const yetkili = interaction.options.getUser('veren');
             const alanUye = interaction.options.getUser('alan');
@@ -603,7 +584,7 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        // DROP ÖDÜLÜ KAPMA (Yarım kalan ve çöken kod bloğu burasıydı, düzeltildi)
+        // DROP ÖDÜLÜ KAPMA
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const dropVeri = await db.get(`drop_data_${dropId}`);
@@ -616,7 +597,6 @@ client.on('interactionCreate', async interaction => {
                 return interaction.reply({ content: '❌ Bu drop ödülü daha önce başkası tarafından kapılmış!', flags: MessageFlags.Ephemeral });
             }
 
-            // Drop durumunu bitti olarak güncelle
             await db.set(`drop_data_${dropId}.bitti`, true);
 
             const basarisizRow = new ActionRowBuilder().addComponents(
@@ -628,39 +608,42 @@ client.on('interactionCreate', async interaction => {
             );
 
             const guncelEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-                .setDescription(`**Ödül:** \`${dropVeri.gorunen}\`\n\n🎉 **Ödül Kapıldı!**\n**Kazanan:** ${interaction.user} ⚡\n\n*Ödül kazanan kullanıcının DM kutusuna teslim edilmiştir.*`)
+                .setDescription(`**Ödül:** \`${dropVeri.gorunen}\`\n\n🎉 **Ödül Kapıldı!**\n**Kazanan:** ${interaction.user} ⚡\n*Ödül otomatik olarak şanslı kişinin DM kutusuna teslim edildi.*`)
                 .setTimestamp();
 
             await interaction.message.edit({ embeds: [guncelEmbed], components: [basarisizRow] });
 
-            // Kazanana DM Gönderme Süreci
             try {
-                const dmEmbed = new EmbedBuilder()
-                    .setTitle('🎉 ÖDÜLÜ KAPTIK!')
-                    .setDescription(`Tebrikler, **Nexus** drop butonuna ilk basan sen oldun!`)
-                    .setColor('#000000')
-                    .setTimestamp();
-
+                let odulMetni = '';
                 if (dropVeri.gizli) {
-                    dmEmbed.addFields({ name: '🔑 Teslim Edilen Ödül / Kod', value: `\`${dropVeri.gizli}\`` });
+                    odulMetni = `**Teslim Edilen Bilgi:**\n\`\`\`${dropVeri.gizli}\`\`\``;
+                } else if (dropVeri.txt) {
+                    odulMetni = `**Teslim Edilen Bilgi:**\n*Ödülünüz ekteki metin (.txt) belgesi olarak gönderilmiştir.* 📂`;
+                } else {
+                    odulMetni = `**Teslim Edilen Bilgi:**\n*Ödülünüz aşağıdaki görselde yer almaktadır!* ⬇️`;
                 }
 
-                const dmOptions = { embeds: [dmEmbed] };
+                const dmEmbed = new EmbedBuilder()
+                    .setTitle('🎁 Drop Ödülün Teslim Edildi!')
+                    .setDescription(`Merhaba! Sunucudaki droptan başarıyla kaptığın ödül aşağıdadır:\n\n**Ödül İsmi:** \`${dropVeri.gorunen}\`\n${odulMetni}\n\n*Bizi tercih ettiğin için teşekkürler!*`)
+                    .setColor('#000000')
+                    .setFooter({ text: 'Nexus Otomatik Teslimat' })
+                    .setTimestamp();
 
-                // Görsel veya TXT dosyası ekleri varsa ekle
                 if (dropVeri.gorsel) {
                     dmEmbed.setImage(dropVeri.gorsel);
                 }
+
+                const gonderilecekDosyalar = [];
                 if (dropVeri.txt) {
-                    const dosyaEki = new AttachmentBuilder(dropVeri.txt, { name: dropVeri.txtIsim || 'odul.txt' });
-                    dmOptions.files = [dosyaEki];
+                    gonderilecekDosyalar.push(new AttachmentBuilder(dropVeri.txt, { name: dropVeri.txtIsim || 'odul_listesi.txt' }));
                 }
 
-                await interaction.user.send(dmOptions);
-                await interaction.reply({ content: '🎉 **Tebrikler!** Ödül başarıyla DM kutuna gönderildi. Eğer mesaj gelmediyse DM ayarlarının açık olduğundan emin ol.', flags: MessageFlags.Ephemeral });
-            } catch (err) {
-                console.error("DM gönderilirken hata oluşdu:", err);
-                await interaction.reply({ content: '🎉 Ödülü kaptın fakat DM kutun kapalı olduğu için ödülü gönderemedim! Lütfen yetkililerle iletişime geç.', flags: MessageFlags.Ephemeral });
+                await interaction.user.send({ embeds: [dmEmbed], files: gonderilecekDosyalar });
+                await interaction.reply({ content: '🎉 **Tebrikler!** Ödül başarıyla DM kutuna gönderildi. Kontrol etmeyi unutma! ⚡', flags: MessageFlags.Ephemeral });
+            } catch (error) {
+                console.error(error);
+                await interaction.reply({ content: `🎉 **Drop'u sen kaptın!** Ancak DM kutun kapalı olduğu için ödülü iletemedim. Lütfen yetkililerle iletişime geçerek \`${dropVeri.gorunen}\` ödülünü talep et!`, flags: MessageFlags.None });
             }
         }
     }
