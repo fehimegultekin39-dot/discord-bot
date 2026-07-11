@@ -5,7 +5,7 @@ const db = new QuickDB();
 const express = require('express');
 const ms = require('ms');
 
-const app = report => express();
+const app = express();
 app.get('/', (req, res) => res.send('Bot 7/24 Aktif!'));
 app.listen(3000);
 
@@ -220,7 +220,7 @@ client.on('interactionCreate', async interaction => {
             
             const baslangicEmbed = new EmbedBuilder()
                 .setTitle('🎉 NEXUS DROP!')
-                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve ödül otomatik olarak DM kutusuna gönderilir!*`)
+                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur og ödül otomatik olarak DM kutusuna gönderilir!*`)
                 .setColor('#000000')
                 .setFooter({ text: `Nexus • Başlatan: @${interaction.user.username}` })
                 .setTimestamp();
@@ -584,7 +584,7 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        // DROP ÖDÜLÜ KAPMA (Gelişmiş TXT, Görsel ve Yazı Filtresi)
+        // DROP ÖDÜLÜ KAPMA (Gelişmiş TXT, Görsel og Yazı Filtresi)
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const dropVeri = await db.get(`drop_data_${dropId}`);
