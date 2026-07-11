@@ -5,10 +5,11 @@ const db = new QuickDB();
 const express = require('express');
 const ms = require('ms');
 
-const app = express();
+const app = report => express();
 app.get('/', (req, res) => res.send('Bot 7/24 Aktif!'));
 app.listen(3000);
 
+// 🛠️ SUNUCU AYARLARI (Kendi ID'lerinizle Değiştirin)
 const DESTEK_ROL_ID = '1520515365786882178';
 const YETKILI_ROL_ID = '1520515365786882178';
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1520473034694066361/1520530500022960198';
@@ -28,14 +29,15 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions]
 });
 
-// SLASH KOMUTLARI
+// SLASH KOMUT TANIMLAMALARI
 const commands = [
     new SlashCommandBuilder()
         .setName('drop')
         .setDescription('Ödüllü otomatik drop başlatır.')
         .addStringOption(o => o.setName('gorunen').setDescription('Kanala yansıyacak ödül ismi (Örn: 1x Minecraft Premium)').setRequired(true))
-        .addStringOption(o => o.setName('teslim_edilecek_odul').setDescription('Kazananın DMsine gidecek gizli hesap/kod (Fotoğraf atacaksanız boş bırakın)').setRequired(false))
-        .addAttachmentOption(o => o.setName('gorsel_dosyasi').setDescription('PC veya Telefondan direkt fotoğraf yükleyin').setRequired(false)),
+        .addStringOption(o => o.setName('teslim_edilecek_odul').setDescription('Kazananın DMsine gidecek gizli hesap/kod (Fotoğraf veya TXT atacaksanız boş bırakın)').setRequired(false))
+        .addAttachmentOption(o => o.setName('gorsel_dosyasi').setDescription('PC veya Telefondan direkt fotoğraf yükleyin').setRequired(false))
+        .addAttachmentOption(o => o.setName('txt_dosyasi').setDescription('Kazananın DMsine gönderilecek .txt uzantılı liste/dosya').setRequired(false)),
         
     new SlashCommandBuilder().setName('cekilis').setDescription('Yeni çekiliş başlatır.').addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)).addIntegerOption(o => o.setName('kazanan_sayisi').setDescription('Kazanan sayısı').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)),
     new SlashCommandBuilder().setName('ticketpanel').setDescription('Destek panelini gönderir.'),
@@ -67,6 +69,7 @@ const commands = [
         .addStringOption(o => o.setName('secenek_e').setDescription('E Seçeneği (İsteğe bağlı)').setRequired(false))
 ].map(c => c.toJSON());
 
+// ÇEKİLİŞ BİTİRME FONKSİYONU
 async function cekilisBitir(channelId, messageId) {
     const veri = await db.get(`cekilis_${messageId}`);
     if (!veri || veri.bitti === true) return; 
@@ -92,7 +95,7 @@ async function cekilisBitir(channelId, messageId) {
             .setTitle('❌ ÇEKİLİŞ İPTAL EDİLDİ')
             .setDescription(`**Ödül:** \`${veri.prize}\`\n\nKatılımcı yetersiz olduğu için çekiliş iptal oldu.`)
             .setColor('#000000')
-            .setFooter({ text: `Black Market • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'}` })
+            .setFooter({ text: `Nexus • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'}` })
             .setTimestamp();
         
         const rerollRow = new ActionRowBuilder().addComponents(
@@ -120,7 +123,7 @@ async function cekilisBitir(channelId, messageId) {
             { name: '📅 Çekiliş Zamanı', value: `*Başlangıç:* <t:${veri.simdi}:F>\n*Bitiş:* <t:${bitisTimestamp}:F>`, inline: false }
         )
         .setColor('#000000')
-        .setFooter({ text: `Black Market • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'}` })
+        .setFooter({ text: `Nexus • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'}` })
         .setTimestamp();
 
     const ticketRow = new ActionRowBuilder().addComponents(
@@ -136,9 +139,10 @@ async function cekilisBitir(channelId, messageId) {
     );
 
     await guncelMesaj.edit({ embeds: [sonEmbed], components: [ticketRow] });
-    await kanal.send({ content: `🎉 **Tebrikler!** ${kazananMention} **kazandı!** 🖤` });
+    await kanal.send({ content: `🎉 **Tebrikler!** ${kazananMention} **kazandı!** ⚡` });
 }
 
+// BOT HAZIR OLDUĞUNDA
 client.once('ready', async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
@@ -174,6 +178,7 @@ client.once('ready', async (c) => {
     }
 });
 
+// ETKİLEŞİM YÖNETİMİ (INTERACTIONS)
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
         
@@ -182,12 +187,16 @@ client.on('interactionCreate', async interaction => {
             const gorunenOdul = interaction.options.getString('gorunen');
             const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
             const gorselDosyası = interaction.options.getAttachment('gorsel_dosyasi');
+            const txtDosyasi = interaction.options.getAttachment('txt_dosyasi');
             
-            if (!gizliOdul && !gorselDosyası) {
-                return interaction.reply({ content: '❌ **Hata:** Ya `teslim_edilecek_odul` kısmına yazılı bilgi girmeli ya da `gorsel_dosyasi` kısmına bir ödül fotoğrafı yüklemelisiniz!', flags: MessageFlags.Ephemeral });
+            if (!gizliOdul && !gorselDosyası && !txtDosyasi) {
+                return interaction.reply({ content: '❌ **Hata:** Ya `teslim_edilecek_odul` kısmına yazılı bilgi girmeli, ya `gorsel_dosyasi` kısmına bir fotoğraf yüklemeli ya da `txt_dosyasi` kısmına bir metin belgesi eklemelisiniz!', flags: MessageFlags.Ephemeral });
             }
 
             const gorselUrl = gorselDosyası ? gorselDosyası.url : null;
+            const txtUrl = txtDosyasi ? txtDosyasi.url : null;
+            const txtAdi = txtDosyasi ? txtDosyasi.name : null;
+            
             const dropId = Date.now();
             const customId = `drop_${dropId}`;
             
@@ -195,6 +204,8 @@ client.on('interactionCreate', async interaction => {
                 gorunen: gorunenOdul,
                 gizli: gizliOdul,
                 gorsel: gorselUrl,
+                txt: txtUrl,
+                txtIsim: txtAdi,
                 baslatan: interaction.user.username,
                 bitti: false
             });
@@ -208,10 +219,10 @@ client.on('interactionCreate', async interaction => {
             );
             
             const baslangicEmbed = new EmbedBuilder()
-                .setTitle('🎉 BLACK MARKET DROP!')
+                .setTitle('🎉 NEXUS DROP!')
                 .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve ödül otomatik olarak DM kutusuna gönderilir!*`)
                 .setColor('#000000')
-                .setFooter({ text: `Black Market • Başlatan: @${interaction.user.username}` })
+                .setFooter({ text: `Nexus • Başlatan: @${interaction.user.username}` })
                 .setTimestamp();
             
             await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
@@ -224,11 +235,11 @@ client.on('interactionCreate', async interaction => {
                     .setCustomId('ticket_secim')
                     .setPlaceholder('Seçim yap')
                     .addOptions([
-                        { label: 'Çekiliş Kazandım', value: 'cekilis_kazandim', emoji: '💟', description: 'Kazandığınız çekiliş ödülünü talep etmek için burayı kullanın.' },
+                        { label: 'Çekiliş Kazandım', value: 'cekilis_kazandim', emoji: '🔮', description: 'Kazandığınız çekiliş ödülünü talep etmek için burayı kullanın.' },
                         { label: 'Drop Kazandım', value: 'drop_kazandim', emoji: '🎁', description: 'Yayın veya etkinliklerden kazandığınız dropları teslim alın.' },
                         { label: 'Hesap Satın Alıcam', value: 'hesap_satinal', emoji: '💲', description: 'Güvenli hesap satın alma, fiyat ve stok bilgisi almak için.' },
                         { label: 'Partnerlik & İşbirliği', value: 'partnerlik', emoji: '🤝', description: 'Ortaklık, reklam ya da sponsorluk görüşmeleri yapmak için.' },
-                        { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '🔵', description: 'Ekibimize katılmak ve yetkili olmak istiyorsanız başvurun.' },
+                        { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '🤖', description: 'Ekibimize katılmak ve yetkili olmak istiyorsanız başvurun.' },
                         { label: 'Teknik Destek', value: 'teknik_destek', emoji: '🔧', description: 'Yaşadığınız problemlerle ilgili teknik destek talebi oluşturun.' },
                         { label: 'Şikayet & Öneri', value: 'sikayet_oneri', emoji: '📝', description: 'Sunucu içi şikayetlerinizi veya önerilerinizi bize iletin.' },
                         { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular ve sorularınız için bu kategoriyi seçin.' }
@@ -236,10 +247,10 @@ client.on('interactionCreate', async interaction => {
             );
 
             const embed = new EmbedBuilder()
-                .setTitle('🖤 Black Market — Destek Merkezi')
+                .setTitle('⚡ Nexus — Destek Merkezi')
                 .setDescription('Merhaba! Size nasıl yardımcı olabiliriz?\n\n⬇️ **Aşağıdan talebine uygun kategoriyi seçerek ticket açabilirsin.**')
                 .setColor('#000000')
-                .setFooter({ text: 'Black Market • @r2xzzs' });
+                .setFooter({ text: 'Nexus • @r2xzzs' });
 
             await interaction.reply({ embeds: [embed], components: [row] });
         }
@@ -260,7 +271,7 @@ client.on('interactionCreate', async interaction => {
             const yildizlar = '⭐'.repeat(yildizSayisi);
             
             const embed = new EmbedBuilder()
-                .setTitle('🖤 Yeni Vouch Onayı')
+                .setTitle('⚡ Yeni Vouch Onayı')
                 .setDescription(`${yetkili} yetkilisine başarılı bir işlem için vouch bırakıldı!`)
                 .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
                 .addFields(
@@ -272,7 +283,7 @@ client.on('interactionCreate', async interaction => {
                 )
                 .setColor('#000000')
                 .setFooter({ 
-                    text: `Vouch Ekleyen: ${interaction.user.username} • Black Market`, 
+                    text: `Vouch Ekleyen: ${interaction.user.username} • Nexus`, 
                     iconURL: interaction.user.displayAvatarURL({ dynamic: true }) 
                 })
                 .setTimestamp();
@@ -290,11 +301,11 @@ client.on('interactionCreate', async interaction => {
                 .setTitle(`📊 ${hedef.username} - İstatistikleri`)
                 .setColor('#000000')
                 .addFields(
-                    { name: '🖤 Vouch Puanı', value: `\`${vSayi}\` adet`, inline: true }, 
+                    { name: '⚡ Vouch Puanı', value: `\`${vSayi}\` adet`, inline: true }, 
                     { name: '✅ Legit Puanı', value: `\`${lSayi}\` adet`, inline: true }
                 )
                 .setThumbnail(hedef.displayAvatarURL())
-                .setFooter({ text: 'Black Market' });
+                .setFooter({ text: 'Nexus' });
             
             await interaction.reply({ embeds: [embed] });
         }
@@ -329,10 +340,10 @@ client.on('interactionCreate', async interaction => {
             const bitisMs = Date.now() + msDur;
             
             const embed = new EmbedBuilder()
-                .setTitle('🎉 BLACK MARKET ÇEKİLİŞ 🎉')
+                .setTitle('🎉 NEXUS ÇEKİLİŞ 🎉')
                 .setDescription(`**Ödül:** \`${prize}\`\n**Kazanan Sayısı:** \`${count}\`\n**Başlatan:** ${interaction.user}\n\n📅 **Başlangıç:** <t:${simdi}:F>\n⏳ **Bitiş:** <t:${bitis}:R> (<t:${bitis}:F>)`)
                 .setColor('#000000')
-                .setFooter({ text: `Black Market • Başlatan: @${interaction.user.username} • 🎉 emojisine tıklayın!` })
+                .setFooter({ text: `Nexus • Başlatan: @${interaction.user.username} • 🎉 emojisine tıklayın!` })
                 .setTimestamp();
             
             const mesaj = await interaction.editReply({ embeds: [embed] });
@@ -354,11 +365,11 @@ client.on('interactionCreate', async interaction => {
             }, msDur);
         }
 
-        // MODERASYON (DEFERREPLY EKLENDİ - UYGULAMA YANIT VERMEDİ HATASI ÇÖZÜLDÜ)
+        // MODERASYON
         if (['ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: 'Yetkin yok!', flags: MessageFlags.Ephemeral });
             
-            await interaction.deferReply(); // Discord zaman aşımı hatasını önler
+            await interaction.deferReply(); 
 
             if (interaction.commandName === 'ban') { 
                 const m = interaction.options.getMember('kisi'); 
@@ -419,12 +430,12 @@ client.on('interactionCreate', async interaction => {
                     { name: '🔢 Toplam Legit', value: `${toplam}`, inline: true }
                 )
                 .setImage(interaction.options.getAttachment('image').url)
-                .setFooter({ text: 'Black Market' });
+                .setFooter({ text: 'Nexus' });
             
             await interaction.reply({ embeds: [embed] });
         }
 
-        // YENİ GELİŞMİŞ ÇOKTAN SEÇMELİ ANKET SİSTEMİ
+        // ANKET SİSTEMİ
         if (interaction.commandName === 'anket') {
             const soru = interaction.options.getString('soru');
             const anketId = Date.now();
@@ -436,12 +447,11 @@ client.on('interactionCreate', async interaction => {
             if (interaction.options.getString('secenek_d')) secenekler.push({ id: 'd', metin: interaction.options.getString('secenek_d'), emoji: '🇩' });
             if (interaction.options.getString('secenek_e')) secenekler.push({ id: 'e', metin: interaction.options.getString('secenek_e'), emoji: '🇪' });
 
-            // Veritabanı başlangıç kurulumu
             await db.set(`anket_${anketId}`, {
                 soru: soru,
                 sahip: interaction.user.username,
                 secenekler: secenekler,
-                oylar: {} // userId: secenekId şeklinde tutulacak
+                oylar: {} 
             });
 
             let aciklama = `**Soru:** ${soru}\n\n`;
@@ -459,7 +469,7 @@ client.on('interactionCreate', async interaction => {
             });
 
             const embed = new EmbedBuilder()
-                .setTitle('📊 BLACK MARKET - GELİŞMİŞ ANKET')
+                .setTitle('📊 NEXUS - GELİŞMİŞ ANKET')
                 .setDescription(aciklama)
                 .setColor('#000000')
                 .setFooter({ text: `Anketi Başlatan: ${interaction.user.username} • Herkes 1 oy kullanabilir.` })
@@ -469,7 +479,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // SELECT MENUS
+    // SELECTION MENUS LOGIC
     else if (interaction.isStringSelectMenu()) {
         if (interaction.customId === 'ticket_secim') {
             const secim = interaction.values[0];
@@ -500,7 +510,7 @@ client.on('interactionCreate', async interaction => {
                 });
 
                 const ticketEmbed = new EmbedBuilder()
-                    .setTitle('🎟️ Black Market — Destek Bileti')
+                    .setTitle('🎟️ Nexus — Destek Bileti')
                     .setDescription(`Merhaba ${interaction.user}, biletiniz başarıyla açıldı!\nYetkililerimiz en kısa sürede sizinle ilgilenecektir.\n\n**Seçtiğiniz Kategori:** \`${canalAdi.split('-')[1].toUpperCase()}\``)
                     .setColor('#000000')
                     .setFooter({ text: 'Bileti kapatmak için aşağıdaki butona tıklayabilirsiniz.' })
@@ -522,7 +532,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // BUTTONS
+    // BUTTONS LOGIC
     else if (interaction.isButton()) {
         if (interaction.customId === 'ticket_kapat') {
             await interaction.reply({ content: '🔒 Bu bilet kanalı 5 saniye içinde siliniyor...' });
@@ -532,7 +542,7 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        // GELİŞMİŞ ANKET OYLAMA MEKANİZMASI
+        // ANKET OY VERME SİSTEMİ
         if (interaction.customId.startsWith('anket_oy_')) {
             const parcalar = interaction.customId.split('_');
             const anketId = parcalar[2];
@@ -543,19 +553,16 @@ client.on('interactionCreate', async interaction => {
 
             const userId = interaction.user.id;
             
-            // Eğer zaten aynı seçeneğe tıklamışsa oyunu geri çeksin
             if (anketVeri.oylar[userId] === secenekId) {
                 delete anketVeri.oylar[userId];
                 await interaction.reply({ content: '🔄 Oyunu başarıyla geri çektin.', flags: MessageFlags.Ephemeral });
             } else {
-                // Oyunu ekle veya değiştir
                 anketVeri.oylar[userId] = secenekId;
                 await interaction.reply({ content: `✅ Oyun başarıyla kaydedildi!`, flags: MessageFlags.Ephemeral });
             }
 
             await db.set(`anket_${anketId}.oylar`, anketVeri.oylar);
 
-            // İstatistik hesaplama
             const toplamOy = Object.keys(anketVeri.oylar).length;
             let yeniAciklama = `**Soru:** ${anketVeri.soru}\n\n`;
 
@@ -563,11 +570,10 @@ client.on('interactionCreate', async interaction => {
                 const oylarSayisi = Object.values(anketVeri.oylar).filter(v => v === s.id).length;
                 const yuzde = toplamOy > 0 ? Math.round((oylarSayisi / toplamOy) * 100) : 0;
                 
-                // İlerleme çubuğu (Visual Bar)
                 const barKarakterSayisi = Math.round(yuzde / 10);
                 const bar = '⬛'.repeat(barKarakterSayisi) + '⬜'.repeat(10 - barKarakterSayisi);
 
-                yeniAciklama += `${s.emoji} **${s.metin}:** \`${yuzde}%\` (${oylarSayisi} Oy)\n> ${bar}\n\n`;
+                yeniAciklama += `${s.emoji} **${s.metin}:** \`0%\` (0 Oy)\n> ${bar}\n\n`;
             });
 
             const guncelEmbed = EmbedBuilder.from(interaction.message.embeds[0])
@@ -578,7 +584,7 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        // DROP ÖDÜLÜ KAPMA 
+        // DROP ÖDÜLÜ KAPMA (Gelişmiş TXT, Görsel ve Yazı Filtresi)
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const dropVeri = await db.get(`drop_data_${dropId}`);
@@ -593,146 +599,51 @@ client.on('interactionCreate', async interaction => {
 
             await db.set(`drop_data_${dropId}.bitti`, true);
 
+            const basarisizRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`kapildi_${dropId}`)
+                    .setLabel(`KAPILDI! (Kazanan: ${interaction.user.username})`)
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(true)
+            );
+
+            const guncelEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+                .setDescription(`**Ödül:** \`${dropVeri.gorunen}\`\n\n🎉 **Ödül Kapıldı!**\n**Kazanan:** ${interaction.user} ⚡\n*Ödül otomatik olarak şanslı kişinin DM kutusuna teslim edildi.*`)
+                .setTimestamp();
+
+            await interaction.message.edit({ embeds: [guncelEmbed], components: [basarisizRow] });
+
             try {
-                const odulMetni = dropVeri.gizli ? `\`\`\`${dropVeri.gizli}\`\`\`` : `*Ödülünüz aşağıdaki görselde yer almaktadır!* ⬇️`;
+                let odulMetni = '';
+                if (dropVeri.gizli) {
+                    odulMetni = `**Teslim Edilen Bilgi:**\n\`\`\`${dropVeri.gizli}\`\`\``;
+                } else if (dropVeri.txt) {
+                    odulMetni = `**Teslim Edilen Bilgi:**\n*Ödülünüz ekteki metin (.txt) belgesi olarak gönderilmiştir.* 📂`;
+                } else {
+                    odulMetni = `**Teslim Edilen Bilgi:**\n*Ödülünüz aşağıdaki görselde yer almaktadır!* ⬇️`;
+                }
 
                 const dmEmbed = new EmbedBuilder()
                     .setTitle('🎁 Drop Ödülün Teslim Edildi!')
-                    .setDescription(`Merhaba! Sunucudaki droptan başarıyla kaptığın ödül aşağıdadır:\n\n**Ödül İsmi:** \`${dropVeri.gorunen}\`\n**Teslim Edilen Bilgi:**\n${odulMetni}\n\n*Bizi tercih ettiğin için teşekkürler!*`)
+                    .setDescription(`Merhaba! Sunucudaki droptan başarıyla kaptığın ödül aşağıdadır:\n\n**Ödül İsmi:** \`${dropVeri.gorunen}\`\n${odulMetni}\n\n*Bizi tercih ettiğin için teşekkürler!*`)
                     .setColor('#000000')
-                    .setFooter({ text: 'Black Market Otomatik Teslimat' })
+                    .setFooter({ text: 'Nexus Otomatik Teslimat' })
                     .setTimestamp();
 
                 if (dropVeri.gorsel) {
                     dmEmbed.setImage(dropVeri.gorsel);
                 }
 
-                await interaction.user.send({ embeds: [dmEmbed] });
-
-                const kazananEmbed = new EmbedBuilder()
-                    .setAuthor({ name: `Drop Başlatan: ${dropVeri.baslatan}`, iconURL: interaction.guild.iconURL() || interaction.user.defaultAvatarURL })
-                    .setTitle('🎉 DROP KAZANILDI! 🖤')
-                    .setDescription(`🏆 ${interaction.user}\n**ödülü kaptı!**`)
-                    .setColor('#000000')
-                    .addFields(
-                        { name: '🎁 Ödül', value: `\`${dropVeri.gorunen}\``, inline: true }, 
-                        { name: '👤 Kazanan', value: `${interaction.user}`, inline: true },
-                        { name: '📩 Teslimat', value: 'Ödül otomatik olarak **DM kutusuna gönderildi!** ✅', inline: false }
-                    )
-                    .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 512 }))
-                    .setFooter({ text: 'Black Market • @r2xzzs' })
-                    .setTimestamp();
-
-                await interaction.update({ embeds: [kazananEmbed], components: [] });
-                await interaction.followUp({ content: `✅ **Tebrikler!** Ödülün DM kutuna başarıyla gönderildi!`, flags: MessageFlags.Ephemeral });
-
-            } catch (dmHata) {
-                console.error("DM gönderilemedi, TXT Dosya sistemine geçiliyor:", dmHata);
-                
-                if (dropVeri.gizli) {
-                    const txtIcerik = `=========================================\nBLACK MARKET DROP OTOMATIK TESLIMAT DOSYASI\n=========================================\n\nKAZANAN KULLANICI: ${interaction.user.username} (${interaction.user.id})\nDROP ODULU: ${dropVeri.gorunen}\n\n-----------------------------------------\nTESLIM EDILEN HESAP / KOD BILGILERI:\n-----------------------------------------\n\n${dropVeri.gizli}\n\n=========================================\nDosya Guvenli Bir Sekilde Olusturuldu.`;
-                    const txtBuffer = Buffer.from(txtIcerik, 'utf-8');
-                    const txtDosya = new AttachmentBuilder(txtBuffer, { name: `blackmarket_drop_${dropId}.txt` });
-
-                    const txtHataEmbed = new EmbedBuilder()
-                        .setAuthor({ name: `Drop Başlatan: ${dropVeri.baslatan}`, iconURL: interaction.guild.iconURL() || interaction.user.defaultAvatarURL })
-                        .setTitle('🎉 DROP KAZANILDI! (DM KAPALI) 🖤')
-                        .setDescription(`🏆 ${interaction.user} **ödülü kaptı!**\n\n⚠️ **Dikkat:** Kazanan kişinin DM kutusu kapalı olduğu için ödül bilgileri aşağıdaki **TXT dosyası** olarak kanala yüklenmiştir!`)
-                        .setColor('#000000')
-                        .addFields(
-                            { name: '🎁 Ödül', value: `\`${dropVeri.gorunen}\``, inline: true }, 
-                            { name: '👤 Kazanan', value: `${interaction.user}`, inline: true }
-                        )
-                        .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 512 }))
-                        .setFooter({ text: 'Black Market Yedek Teslimat Sistemi' })
-                        .setTimestamp();
-
-                    await interaction.update({ embeds: [txtHataEmbed], components: [] });
-                    await interaction.channel.send({ content: `🔔 ${interaction.user} Ödül dosyanız aşağıdadır:`, files: [txtDosya] });
-                } else {
-                    const gorselHataEmbed = new EmbedBuilder()
-                        .setAuthor({ name: `Drop Başlatan: ${dropVeri.baslatan}`, iconURL: interaction.guild.iconURL() || interaction.user.defaultAvatarURL })
-                        .setTitle('🎉 DROP KAZANILDI! (DM KAPALI) 🖤')
-                        .setDescription(`🏆 ${interaction.user} **ödülü kaptı!**\n\n⚠️ Kazanan kişinin DM kutusu kapalı olduğu için ödül görseli doğrudan aşağıya bırakılmıştır.`)
-                        .setColor('#000000')
-                        .addFields(
-                            { name: '🎁 Ödül', value: `\`${dropVeri.gorunen}\``, inline: true }, 
-                            { name: '👤 Kazanan', value: `${interaction.user}`, inline: true }
-                        )
-                        .setImage(dropVeri.gorsel)
-                        .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 512 }))
-                        .setFooter({ text: 'Black Market' })
-                        .setTimestamp();
-
-                    await interaction.update({ embeds: [gorselHataEmbed], components: [] });
-                }
-            }
-        }
-
-        // REROLL
-        if (interaction.customId.startsWith('cekilis_reroll_')) {
-            if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) {
-                return interaction.reply({ content: '❌ **Yetki Yetersiz:** Bu butonu sadece yetkili ekibi kullanabilir.', flags: MessageFlags.Ephemeral });
-            }
-
-            const messageId = interaction.customId.replace('cekilis_reroll_', '');
-            const veri = await db.get(`cekilis_${messageId}`);
-
-            if (!veri) {
-                return interaction.reply({ content: '❌ Bu çekilişe ait veritabanı kaydı bulunamadı.', flags: MessageFlags.Ephemeral });
-            }
-
-            try {
-                const targetMessage = await interaction.channel.messages.fetch(messageId).catch(() => null);
-                if (!targetMessage) return interaction.reply({ content: '❌ Çekiliş mesajına ulaşılamadı.', flags: MessageFlags.Ephemeral });
-
-                const reaction = targetMessage.reactions.cache.get('🎉');
-                if (!reaction) return interaction.reply({ content: '❌ Katılımcı reaksiyonu (🎉) bulunamadı.', flags: MessageFlags.Ephemeral });
-
-                await reaction.users.fetch();
-                const katilimcilar = reaction.users.cache.filter(u => !u.bot);
-
-                if (katilimcilar.size === 0) {
-                    return interaction.reply({ content: '❌ Çekilişte reaksiyon veren geçerli kullanıcı kalmadığı için yeniden çekilemiyor.', flags: MessageFlags.Ephemeral });
+                const gonderilecekDosyalar = [];
+                if (dropVeri.txt) {
+                    gonderilecekDosyalar.push(new AttachmentBuilder(dropVeri.txt, { name: dropVeri.txtIsim || 'odul_listesi.txt' }));
                 }
 
-                const yeniKazananlar = katilimcilar.random(Math.min(veri.count, katilimcilar.size));
-                const kazananMention = Array.isArray(yeniKazananlar) ? yeniKazananlar.map(u => u.toString()).join(', ') : yeniKazananlar.toString();
-
-                const baslatanUye = veri.baslatanId ? `<@${veri.baslatanId}>` : `@r2xzzs`;
-
-                const yeniEmbed = new EmbedBuilder()
-                    .setTitle('🏆 ÇEKİLİŞ YENİDEN ÇEKİLDİ!')
-                    .setDescription(`**Ödül:** \`${veri.prize}\``)
-                    .addFields(
-                        { name: '👑 Kazanan(lar)', value: `> ${kazananMention}`, inline: true }, 
-                        { name: '🎟 Katılımcı', value: `\`${katilimcilar.size} kişi\``, inline: true },
-                        { name: '👤 Başlatan', value: `> ${baslatanUye}`, inline: false },
-                        { name: '📅 Çekiliş Zamanı', value: `*Başlangıç:* <t:${veri.simdi}:F>\n*Son Yenilenme:* <t:${Math.floor(Date.now() / 1000)}:R>`, inline: false }
-                    )
-                    .setColor('#000000')
-                    .setFooter({ text: `Black Market • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'}` })
-                    .setTimestamp();
-
-                const ticketRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId(`cekilis_reroll_${messageId}`)
-                        .setLabel('🔄 Yeniden Çek')
-                        .setStyle(ButtonStyle.Secondary),
-                    new ButtonBuilder()
-                        .setLabel('Ödülü Almak İçin Ticket Aç')
-                        .setStyle(ButtonStyle.Link)
-                        .setURL(TICKET_KANAL_LINKI)
-                        .setEmoji('🎟️')
-                );
-
-                await targetMessage.edit({ embeds: [yeniEmbed], components: [ticketRow] });
-                await interaction.reply({ content: `🎉 Çekiliş başarıyla yeniden çekildi!`, flags: MessageFlags.Ephemeral });
-                await interaction.channel.send({ content: `🔄 **Reroll!** Yeni kazanan(lar): ${kazananMention} 🖤` });
-
+                await interaction.user.send({ embeds: [dmEmbed], files: gonderilecekDosyalar });
+                await interaction.reply({ content: '🎉 **Tebrikler!** Ödül başarıyla DM kutuna gönderildi. Kontrol etmeyi unutma! ⚡', flags: MessageFlags.Ephemeral });
             } catch (error) {
                 console.error(error);
-                await interaction.reply({ content: '❌ Çekiliş yeniden çekilirken teknik bir sorun oluştu.', flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: `🎉 **Drop'u sen kaptın!** Ancak DM kutun kapalı olduğu için ödülü iletemedim. Lütfen yetkililerle iletişime geçerek \`${dropVeri.gorunen}\` ödülünü talep et!`, flags: MessageFlags.None });
             }
         }
     }
