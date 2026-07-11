@@ -42,10 +42,11 @@ const panelVerileri = {
 // Paneli sunucuya basmak için chat komutu (!log-panel)
 client.on('messageCreate', async (message) => {
     if (message.content === '!log-panel') {
+        // Sadece yönetici yetkisi olanlar paneli atabilir
         if (!message.member.permissions.has('Administrator')) return;
 
         const embed = new EmbedBuilder()
-            .setColor('#1e1f22') // Tam Discord arayüzü uyumlu koyu arka plan tonu
+            .setColor('#1e1f22') // Discord arayüzü ile bütünleşen koyu siyah arka plan tonu
             .setTitle('Nexus — Generator Panel')
             .setDescription('Aşağıdan generator tipini seç, ardından kategori butonuna bas.\nHesap doğrudan **DM kutuna** gönderilir. 📬\n\n' +
                 '🆓 **Free** — Herkes kullanabilir\n' +
@@ -71,33 +72,34 @@ client.on('messageCreate', async (message) => {
             )
             .setFooter({ text: `🔒 Nexus Generator System • Bugün saat 13:07` });
 
-        // Gönderdiğin resimdeki buton düzeni (Mavi, Yeşil, Kırmızı)
+        // Görseldeki renk sıralamasına göre buton düzeni (Mavi, Yeşil, Kırmızı)
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('nexus_gen_free')
                 .setLabel('Free Generator')
                 .setEmoji('🆓')
-                .setStyle(ButtonStyle.Primary), 
+                .setStyle(ButtonStyle.Primary), // Mavi buton
             new ButtonBuilder()
                 .setCustomId('nexus_gen_premium')
                 .setLabel('Premium Generator')
                 .setEmoji('💎')
-                .setStyle(ButtonStyle.Success), 
+                .setStyle(ButtonStyle.Success), // Yeşil buton
             new ButtonBuilder()
                 .setCustomId('nexus_gen_booster')
                 .setLabel('Booster Generator')
                 .setEmoji('🚀')
-                .setStyle(ButtonStyle.Danger) 
+                .setStyle(ButtonStyle.Danger) // Kırmızı buton
         );
 
         await message.channel.send({ embeds: [embed], components: [row] });
     }
 });
 
-// Buton Etkileşim Kontrolleri
+// Buton Etkileşim Kontrolleri (Tıklama Olayları)
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
 
+    // Sadece butona tıklayan kişinin görebileceği gizli (Ephemeral) mesajlar
     if (interaction.customId === 'nexus_gen_free') {
         await interaction.reply({ content: '🆓 **Free kategorileri başarıyla yüklendi!** DM kutunuz kapalıysa hesap iletilemez.', flags: MessageFlags.Ephemeral });
     }
