@@ -11,7 +11,7 @@ app.listen(3000);
 
 // 🛠️ SUNUCU AYARLARI (Kendi ID'lerinizle Değiştirin)
 const DESTEK_ROL_ID = '1520515365786882178';
-const YETKILI_ROL_ID = '1520515365786882178';
+const YETKILI_ROL_ID = '1520515365786882178'; // ⚠️ BURAYA KENDİ YETKİLİ ROL ID'NİZİ YAZIN
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1520473034694066361/1520530500022960198';
 
 function parseTurkceSure(sure) {
@@ -61,7 +61,7 @@ const commands = [
         .addIntegerOption(o => o.setName('yildiz').setDescription('Değerlendirme yıldızı (1-5)').setRequired(true).setMinValue(1).setMaxValue(5))
         .addStringOption(o => o.setName('not').setDescription('Eklemek istediğiniz not veya yorum').setRequired(true)),
         
-    new SlashCommandBuilder().setName('yetkilipuan').setDescription('Yetkilinin vouch og legit puanlarına bakar.').addUserOption(o => o.setName('kullanici').setDescription('Bakmak istediğiniz kişi')),
+    new SlashCommandBuilder().setName('yetkilipuan').setDescription('Yetkilinin vouch ve legit puanlarına bakar.').addUserOption(o => o.setName('kullanici').setDescription('Bakmak istediğiniz kişi')),
     new SlashCommandBuilder().setName('ban').setDescription('Kullanıcıyı banlar.').addUserOption(o => o.setName('kisi').setDescription('Banlanacak kişi').setRequired(true)),
     new SlashCommandBuilder().setName('unban').setDescription('Ban kaldırır.').addStringOption(o => o.setName('kisi_id').setDescription('Kişi ID').setRequired(true)),
     new SlashCommandBuilder().setName('mute').setDescription('Kullanıcıyı susturur.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)).addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)),
@@ -210,7 +210,6 @@ client.on('guildMemberAdd', async (member) => {
         invitesCache.set(member.guild.id, new Map(currentInvites.map(inv => [inv.code, inv.uses])));
         
         if (usedInvite && usedInvite.inviter) {
-            // Davet eden kişinin ID'si altında giren kişiyi veritabanına ekle
             await db.push(`invited_users_${usedInvite.inviter.id}`, {
                 id: member.id,
                 tag: member.user.tag,
@@ -218,7 +217,7 @@ client.on('guildMemberAdd', async (member) => {
             });
         }
     } catch (error) {
-        console.error('guildMemberAdd olayında davet eşleştirilemedi:', error);
+        console.error('guildMemberAdd olayında hata:', error);
     }
 });
 
@@ -226,8 +225,12 @@ client.on('guildMemberAdd', async (member) => {
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
 
-    if (message.content.startsWith('-i')) {
-        // YETKİ KONTROLÜ: Sadece Yetkili Rol ID'sine sahip olanlar kullanabilir
+    // Tam kelime kontrolü sağlayarak tetiklenme hatalarını önlüyoruz
+    const args = message.content.trim().split(/ +/);
+    const command = args.shift().toLowerCase();
+
+    if (command === '-i') {
+        // YETKİ KONTROLÜ
         if (!message.member.roles.cache.has(YETKILI_ROL_ID)) {
             return message.reply('❌ **Hata:** Bu komutu kullanmak için gerekli yetkiye sahip değilsin.');
         }
@@ -242,13 +245,12 @@ client.on('messageCreate', async (message) => {
                 totalUses += inv.uses;
             });
 
-            // Veritabanından bu kişinin davetiyle giren son 10 üyeyi çek
             const invitedHistory = await db.get(`invited_users_${targetUser.id}`) || [];
             
             let girenlerMetni = 'Bulunamadı.';
             if (invitedHistory.length > 0) {
                 // Son girenleri en üstte göstermek için listeyi ters çevirip son 10 tanesini alıyoruz
-                girenlerMetni = invitedHistory.reverse().slice(0, 10).map((u, index) => {
+                girenlerMetni = [...invitedHistory].reverse().slice(0, 10).map((u, index) => {
                     return `\`${index + 1}.\` <@${u.id}> (${u.tag})`;
                 }).join('\n');
             }
@@ -602,7 +604,7 @@ client.on('interactionCreate', async interaction => {
                     permissionOverwrites: [
                         { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
                         { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-                        { id: DESTEK_ROL_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] }
+                        { id: DESTE重_ROL_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] }
                     ]
                 });
 
