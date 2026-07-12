@@ -31,12 +31,9 @@ const client = new Client({
         GatewayIntentBits.GuildMessages, 
         GatewayIntentBits.MessageContent, 
         GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildInvites, 
         GatewayIntentBits.GuildMembers  
     ]
 });
-
-const invitesCache = new Map();
 
 // SLASH KOMUT TANIMLAMALARI
 const commands = [
@@ -164,15 +161,6 @@ client.once('ready', async (c) => {
     
     console.log(`${c.user.tag} aktif!`);
 
-    for (const [guildId, guild] of client.guilds.cache) {
-        try {
-            const invites = await guild.invites.fetch();
-            invitesCache.set(guild.id, new Map(invites.map(invite => [invite.code, invite.uses])));
-        } catch (err) {
-            console.log(`${guild.name} sunucusunun davetleri çekilemedi.`);
-        }
-    }
-
     const tumVeriler = await db.all();
     const aktifCekilisler = tumVeriler.filter(v => v.id.startsWith('cekilis_'));
 
@@ -192,80 +180,6 @@ client.once('ready', async (c) => {
                     await cekilisBitir(veri.channelId, msgId);
                 }, kalanSure);
             }
-        }
-    }
-});
-
-// SUNUCUYA BİRİ GİRDİĞİNDE
-client.on('guildMemberAdd', async (member) => {
-    try {
-        const cachedInvites = invitesCache.get(member.guild.id);
-        const currentInvites = await member.guild.invites.fetch();
-        const usedInvite = currentInvites.find(inv => cachedInvites && inv.uses > (cachedInvites.get(inv.code) || 0));
-        
-        invitesCache.set(member.guild.id, new Map(currentInvites.map(inv => [inv.code, inv.uses])));
-        
-        if (usedInvite && usedInvite.inviter) {
-            await db.push(`invited_users_${usedInvite.inviter.id}`, {
-                id: member.id,
-                tag: member.user.tag,
-                time: Date.now()
-            });
-        }
-    } catch (error) {
-        console.error('Davet analizi yapılırken hata oluştu:', error);
-    }
-});
-
-// PREFIX TABANLI MESAJ KONTROLLERİ (-i KOMUTU)
-client.on('messageCreate', async (message) => {
-    if (message.author.bot || !message.guild) return;
-
-    const args = message.content.trim().split(/ +/);
-    const command = args.shift().toLowerCase();
-
-    if (command === '-i') {
-        if (!message.member.roles.cache.has(YETKILI_ROL_ID)) {
-            return message.reply('❌ **Hata:** Bu komutu kullanmak için gerekli yetkiye sahip değilsin.');
-        }
-
-        try {
-            const guildInvites = await message.guild.invites.fetch();
-            const targetUser = message.mentions.users.first() || message.author;
-            const userInvites = guildInvites.filter(inv => inv.inviter && inv.inviter.id === targetUser.id);
-            
-            let totalUses = 0;
-            userInvites.forEach(inv => {
-                totalUses += inv.uses;
-            });
-
-            const invitedHistory = await db.get(`invited_users_${targetUser.id}`) || [];
-            
-            let girenlerMetni = 'Bulunamadı.';
-            if (invitedHistory.length > 0) {
-                girenlerMetni = [...invitedHistory].reverse().slice(0, 10).map((u, index) => {
-                    return `\`${index + 1}.\` <@${u.id}> (${u.tag})`;
-                }).join('\n');
-            }
-
-            const inviteEmbed = new EmbedBuilder()
-                .setColor('#000000')
-                .setTitle('📊 Nexus — Davet Bilgileri')
-                .setDescription(`<@${targetUser.id}> kullanıcısının sunucu davet verileri aşağıdadır:`)
-                .addFields(
-                    { name: '👥 Toplam Davet (Kullanım)', value: `> **${totalUses}** kişi katıldı`, inline: true },
-                    { name: '🔗 Aktif Link Sayısı', value: `> **${userInvites.size}** adet link`, inline: true },
-                    { name: '📥 Davet Edilen Son Kişiler (Max 10)', value: girenlerMetni, inline: false }
-                )
-                .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 256 }))
-                .setFooter({ text: `Sorgulayan: ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
-                .setTimestamp();
-
-            return message.reply({ embeds: [inviteEmbed] });
-
-        } catch (error) {
-            console.error('Davet komutunda hata oluştu:', error);
-            return message.reply('❌ Davet bilgileri okunurken bir sorun oluştu. Botun sunucuda "Sunucuyu Yönet" yetkisi olduğundan emin ol.');
         }
     }
 });
@@ -334,7 +248,7 @@ client.on('interactionCreate', async interaction => {
                         { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '🤖', description: 'Ekibimize katılmak ve yetkili olmak istiyorsanız başvurun.' },
                         { label: 'Teknik Destek', value: 'teknik_destek', emoji: '🔧', description: 'Yaşadığınız problemlerle ilgili teknik destek talebi oluşturun.' },
                         { label: 'Şikayet & Öneri', value: 'sikayet_oneri', emoji: '📝', description: 'Sunucu içi şikayetlerinizi veya önerilerinizi bize iletin.' },
-                        { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular og sorularınız için bu kategoriyi seçin.' }
+                        { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular ve sorularınız için bu kategoriyi seçin.' }
                     ])
             );
 
