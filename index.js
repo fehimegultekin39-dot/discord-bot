@@ -11,7 +11,7 @@ app.listen(3000);
 
 // 🛠️ SUNUCU AYARLARI (Kendi ID'lerinizle Değiştirin)
 const DESTEK_ROL_ID = '1520515365786882178';
-const YETKILI_ROL_ID = '1520515365786882178'; // ⚠️ BURAYA KENDİ YETKİLİ ROL ID'NİZİ YAZIN
+const YETKILI_ROL_ID = '1520515365786882178'; 
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1520473034694066361/1520530500022960198';
 
 function parseTurkceSure(sure) {
@@ -36,7 +36,6 @@ const client = new Client({
     ]
 });
 
-// Davet takibi için geçici önbellek
 const invitesCache = new Map();
 
 // SLASH KOMUT TANIMLAMALARI
@@ -165,7 +164,6 @@ client.once('ready', async (c) => {
     
     console.log(`${c.user.tag} aktif!`);
 
-    // Davetleri önbelleğe yükle
     for (const [guildId, guild] of client.guilds.cache) {
         try {
             const invites = await guild.invites.fetch();
@@ -198,15 +196,13 @@ client.once('ready', async (c) => {
     }
 });
 
-// SUNUCUYA BİRİ GİRDİĞİNDE (DAVET TAKİBİ İÇİN)
+// SUNUCUYA BİRİ GİRDİĞİNDE
 client.on('guildMemberAdd', async (member) => {
     try {
         const cachedInvites = invitesCache.get(member.guild.id);
         const currentInvites = await member.guild.invites.fetch();
-        
         const usedInvite = currentInvites.find(inv => cachedInvites && inv.uses > (cachedInvites.get(inv.code) || 0));
         
-        // Önbelleği güncelle
         invitesCache.set(member.guild.id, new Map(currentInvites.map(inv => [inv.code, inv.uses])));
         
         if (usedInvite && usedInvite.inviter) {
@@ -217,7 +213,7 @@ client.on('guildMemberAdd', async (member) => {
             });
         }
     } catch (error) {
-        console.error('guildMemberAdd olayında hata:', error);
+        console.error('Davet analizi yapılırken hata oluştu:', error);
     }
 });
 
@@ -225,12 +221,10 @@ client.on('guildMemberAdd', async (member) => {
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
 
-    // Tam kelime kontrolü sağlayarak tetiklenme hatalarını önlüyoruz
     const args = message.content.trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
     if (command === '-i') {
-        // YETKİ KONTROLÜ
         if (!message.member.roles.cache.has(YETKILI_ROL_ID)) {
             return message.reply('❌ **Hata:** Bu komutu kullanmak için gerekli yetkiye sahip değilsin.');
         }
@@ -249,7 +243,6 @@ client.on('messageCreate', async (message) => {
             
             let girenlerMetni = 'Bulunamadı.';
             if (invitedHistory.length > 0) {
-                // Son girenleri en üstte göstermek için listeyi ters çevirip son 10 tanesini alıyoruz
                 girenlerMetni = [...invitedHistory].reverse().slice(0, 10).map((u, index) => {
                     return `\`${index + 1}.\` <@${u.id}> (${u.tag})`;
                 }).join('\n');
@@ -341,7 +334,7 @@ client.on('interactionCreate', async interaction => {
                         { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '🤖', description: 'Ekibimize katılmak ve yetkili olmak istiyorsanız başvurun.' },
                         { label: 'Teknik Destek', value: 'teknik_destek', emoji: '🔧', description: 'Yaşadığınız problemlerle ilgili teknik destek talebi oluşturun.' },
                         { label: 'Şikayet & Öneri', value: 'sikayet_oneri', emoji: '📝', description: 'Sunucu içi şikayetlerinizi veya önerilerinizi bize iletin.' },
-                        { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular ve sorularınız için bu kategoriyi seçin.' }
+                        { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular og sorularınız için bu kategoriyi seçin.' }
                     ])
             );
 
@@ -604,7 +597,7 @@ client.on('interactionCreate', async interaction => {
                     permissionOverwrites: [
                         { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
                         { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-                        { id: DESTE重_ROL_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] }
+                        { id: DESTEK_ROL_ID, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] }
                     ]
                 });
 
@@ -704,7 +697,7 @@ client.on('interactionCreate', async interaction => {
                     .setLabel(`KAPILDI! (Kazanan: ${interaction.user.username})`)
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(true)
-            );
+                );
 
             const guncelEmbed = EmbedBuilder.from(interaction.message.embeds[0])
                 .setDescription(`**Ödül:** \`${dropVeri.gorunen}\`\n\n🎉 **Ödül Kapıldı!**\n**Kazanan:** ${interaction.user} ⚡\n*Ödül otomatik olarak kazananın DM kutusuna gönderildi.*`)
@@ -713,7 +706,6 @@ client.on('interactionCreate', async interaction => {
 
             await interaction.message.edit({ embeds: [guncelEmbed], components: [basarisizRow] });
 
-            // Kazanan kişiye DM atma aşaması
             try {
                 if (dropVeri.gizli) {
                     await interaction.user.send({ content: `🎉 **Tebrikler!** Sunucudaki drop ödülünü ilk sen kaptın!\n🎁 **Ödülün:** \`${dropVeri.gizli}\`` });
