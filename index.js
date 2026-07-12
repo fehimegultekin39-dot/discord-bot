@@ -31,10 +31,13 @@ const client = new Client({
         GatewayIntentBits.GuildMessages, 
         GatewayIntentBits.MessageContent, 
         GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildInvites, // Davetleri çekebilmek için zorunlu
-        GatewayIntentBits.GuildMembers  // Üye bilgilerini ve rollerini işleyebilmek için zorunlu
+        GatewayIntentBits.GuildInvites, 
+        GatewayIntentBits.GuildMembers  
     ]
 });
+
+// Davet takibi için geçici önbellek
+const invitesCache = new Map();
 
 // SLASH KOMUT TANIMLAMALARI
 const commands = [
@@ -58,7 +61,7 @@ const commands = [
         .addIntegerOption(o => o.setName('yildiz').setDescription('Değerlendirme yıldızı (1-5)').setRequired(true).setMinValue(1).setMaxValue(5))
         .addStringOption(o => o.setName('not').setDescription('Eklemek istediğiniz not veya yorum').setRequired(true)),
         
-    new SlashCommandBuilder().setName('yetkilipuan').setDescription('Yetkilinin vouch ve legit puanlarına bakar.').addUserOption(o => o.setName('kullanici').setDescription('Bakmak istediğiniz kişi')),
+    new SlashCommandBuilder().setName('yetkilipuan').setDescription('Yetkilinin vouch og legit puanlarına bakar.').addUserOption(o => o.setName('kullanici').setDescription('Bakmak istediğiniz kişi')),
     new SlashCommandBuilder().setName('ban').setDescription('Kullanıcıyı banlar.').addUserOption(o => o.setName('kisi').setDescription('Banlanacak kişi').setRequired(true)),
     new SlashCommandBuilder().setName('unban').setDescription('Ban kaldırır.').addStringOption(o => o.setName('kisi_id').setDescription('Kişi ID').setRequired(true)),
     new SlashCommandBuilder().setName('mute').setDescription('Kullanıcıyı susturur.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)).addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)),
@@ -162,6 +165,16 @@ client.once('ready', async (c) => {
     
     console.log(`${c.user.tag} aktif!`);
 
+    // Davetleri önbelleğe yükle
+    for (const [guildId, guild] of client.guilds.cache) {
+        try {
+            const invites = await guild.invites.fetch();
+            invitesCache.set(guild.id, new Map(invites.map(invite => [invite.code, invite.uses])));
+        } catch (err) {
+            console.log(`${guild.name} sunucusunun davetleri çekilemedi.`);
+        }
+    }
+
     const tumVeriler = await db.all();
     const aktifCekilisler = tumVeriler.filter(v => v.id.startsWith('cekilis_'));
 
@@ -185,12 +198,36 @@ client.once('ready', async (c) => {
     }
 });
 
+// SUNUCUYA BİRİ GİRDİĞİNDE (DAVET TAKİBİ İÇİN)
+client.on('guildMemberAdd', async (member) => {
+    try {
+        const cachedInvites = invitesCache.get(member.guild.id);
+        const currentInvites = await member.guild.invites.fetch();
+        
+        const usedInvite = currentInvites.find(inv => cachedInvites && inv.uses > (cachedInvites.get(inv.code) || 0));
+        
+        // Önbelleği güncelle
+        invitesCache.set(member.guild.id, new Map(currentInvites.map(inv => [inv.code, inv.uses])));
+        
+        if (usedInvite && usedInvite.inviter) {
+            // Davet eden kişinin ID'si altında giren kişiyi veritabanına ekle
+            await db.push(`invited_users_${usedInvite.inviter.id}`, {
+                id: member.id,
+                tag: member.user.tag,
+                time: Date.now()
+            });
+        }
+    } catch (error) {
+        console.error('guildMemberAdd olayında davet eşleştirilemedi:', error);
+    }
+});
+
 // PREFIX TABANLI MESAJ KONTROLLERİ (-i KOMUTU)
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
 
     if (message.content.startsWith('-i')) {
-        // YETKİ KONTROLÜ: Sadece yetkili rolü olanlar kullanabilir
+        // YETKİ KONTROLÜ: Sadece Yetkili Rol ID'sine sahip olanlar kullanabilir
         if (!message.member.roles.cache.has(YETKILI_ROL_ID)) {
             return message.reply('❌ **Hata:** Bu komutu kullanmak için gerekli yetkiye sahip değilsin.');
         }
@@ -205,13 +242,25 @@ client.on('messageCreate', async (message) => {
                 totalUses += inv.uses;
             });
 
+            // Veritabanından bu kişinin davetiyle giren son 10 üyeyi çek
+            const invitedHistory = await db.get(`invited_users_${targetUser.id}`) || [];
+            
+            let girenlerMetni = 'Bulunamadı.';
+            if (invitedHistory.length > 0) {
+                // Son girenleri en üstte göstermek için listeyi ters çevirip son 10 tanesini alıyoruz
+                girenlerMetni = invitedHistory.reverse().slice(0, 10).map((u, index) => {
+                    return `\`${index + 1}.\` <@${u.id}> (${u.tag})`;
+                }).join('\n');
+            }
+
             const inviteEmbed = new EmbedBuilder()
                 .setColor('#000000')
                 .setTitle('📊 Nexus — Davet Bilgileri')
                 .setDescription(`<@${targetUser.id}> kullanıcısının sunucu davet verileri aşağıdadır:`)
                 .addFields(
                     { name: '👥 Toplam Davet (Kullanım)', value: `> **${totalUses}** kişi katıldı`, inline: true },
-                    { name: '🔗 Aktif Link Sayısı', value: `> **${userInvites.size}** adet link`, inline: true }
+                    { name: '🔗 Aktif Link Sayısı', value: `> **${userInvites.size}** adet link`, inline: true },
+                    { name: '📥 Davet Edilen Son Kişiler (Max 10)', value: girenlerMetni, inline: false }
                 )
                 .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 256 }))
                 .setFooter({ text: `Sorgulayan: ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
@@ -268,7 +317,7 @@ client.on('interactionCreate', async interaction => {
             
             const baslangicEmbed = new EmbedBuilder()
                 .setTitle('🎉 NEXUS DROP!')
-                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur og otomatik olarak DM kutusuna gönderilir!*`)
+                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve otomatik olarak DM kutusuna gönderilir!*`)
                 .setColor('#000000')
                 .setFooter({ text: `Nexus • Başlatan: @${interaction.user.username}` })
                 .setTimestamp();
@@ -285,12 +334,12 @@ client.on('interactionCreate', async interaction => {
                     .addOptions([
                         { label: 'Çekiliş Kazandım', value: 'cekilis_kazandim', emoji: '🔮', description: 'Kazandığınız çekiliş ödülünü talep etmek için burayı kullanın.' },
                         { label: 'Drop Kazandım', value: 'drop_kazandim', emoji: '🎁', description: 'Yayın veya etkinliklerden kazandığınız dropları teslim alın.' },
-                        { label: 'Hesap Satın Alıcam', value: 'hesap_satinal', emoji: '💲', description: 'Güvenli hesap satın alma, fiyat og stok bilgisi almak için.' },
+                        { label: 'Hesap Satın Alıcam', value: 'hesap_satinal', emoji: '💲', description: 'Güvenli hesap satın alma, fiyat ve stok bilgisi almak için.' },
                         { label: 'Partnerlik & İşbirliği', value: 'partnerlik', emoji: '🤝', description: 'Ortaklık, reklam ya da sponsorluk görüşmeleri yapmak için.' },
-                        { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '🤖', description: 'Ekibimize katılmak og yetkili olmak istiyorsanız başvurun.' },
+                        { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '🤖', description: 'Ekibimize katılmak ve yetkili olmak istiyorsanız başvurun.' },
                         { label: 'Teknik Destek', value: 'teknik_destek', emoji: '🔧', description: 'Yaşadığınız problemlerle ilgili teknik destek talebi oluşturun.' },
                         { label: 'Şikayet & Öneri', value: 'sikayet_oneri', emoji: '📝', description: 'Sunucu içi şikayetlerinizi veya önerilerinizi bize iletin.' },
-                        { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular og sorularınız için bu kategoriyi seçin.' }
+                        { label: 'Diğer', value: 'diger', emoji: '❓', description: 'Diğer tüm konular ve sorularınız için bu kategoriyi seçin.' }
                     ])
             );
 
