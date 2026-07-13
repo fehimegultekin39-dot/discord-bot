@@ -23,9 +23,10 @@ const app = express();
 app.get('/', (req, res) => res.send('Bot 7/24 Aktif!'));
 app.listen(3000);
 
-// 🛠️ SUNUCU AYARLARI
+// 🛠️ SUNUCU VE ROL AYARLARI
 const DESTEK_ROL_ID = '1520515365786882178';
 const YETKILI_ROL_ID = '1520515365786882178';
+const DROP_ROL_ID = '1526170253506379847'; // Drop alabilecek ve durumuna yazanlara verilecek rol
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1520473034694066361/1520530500022960198';
 
 function parseTurkceSure(sure) {
@@ -44,7 +45,9 @@ const client = new Client({
         GatewayIntentBits.Guilds, 
         GatewayIntentBits.GuildMessages, 
         GatewayIntentBits.MessageContent, 
-        GatewayIntentBits.GuildMessageReactions
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildMembers,      // Üyeleri kontrol etmek için gerekli
+        GatewayIntentBits.GuildPresences    // Durum (Status) kontrolü için gerekli
     ]
 });
 
@@ -174,6 +177,7 @@ client.once('ready', async (c) => {
     
     console.log(`${c.user.tag} aktif!`);
 
+    // Eski çekilişleri canlandırma mantığı
     const tumVeriler = await db.all();
     const aktifCekilisler = tumVeriler.filter(v => v.id.startsWith('cekilis_'));
 
@@ -195,6 +199,37 @@ client.once('ready', async (c) => {
             }
         }
     }
+
+    // 🔄 DURUM (CUSTOM STATUS) KONTROL SİSTEMİ (Her 30 Saniyede Bir Çalışır)
+    setInterval(async () => {
+        client.guilds.cache.forEach(async (guild) => {
+            try {
+                await guild.members.fetch(); // Tüm üyeleri önbelleğe al
+                const rol = guild.roles.cache.get(DROP_ROL_ID);
+                if (!rol) return;
+
+                guild.members.cache.forEach(async (member) => {
+                    if (member.user.bot) return;
+
+                    // Kullanıcının özel durumunda .gg/stealdawn yazıyor mu kontrol et
+                    const customStatus = member.presence?.activities.find(a => a.type === 4); 
+                    const durumYazisi = customStatus?.state ? customStatus.state.toLowerCase() : "";
+
+                    if (durumYazisi.includes('.gg/stealdawn')) {
+                        if (!member.roles.cache.has(DROP_ROL_ID)) {
+                            await member.roles.add(DROP_ROL_ID).catch(() => null);
+                        }
+                    } else {
+                        if (member.roles.cache.has(DROP_ROL_ID)) {
+                            await member.roles.remove(DROP_ROL_ID).catch(() => null);
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error("Durum kontrolü sırasında hata oluştu:", err);
+            }
+        });
+    }, 30000); 
 });
 
 // ETKİLEŞİM YÖNETİMİ (INTERACTIONS)
@@ -239,7 +274,7 @@ client.on('interactionCreate', async interaction => {
             
             const baslangicEmbed = new EmbedBuilder()
                 .setTitle('🎉 STEAL DAWN DROP!')
-                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur ve ödül otomatik olarak DM kutusuna gönderilir!*`)
+                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur!*\n⚠️ **Not:** Bu drop ödülünü sadece durumunda \`.gg/stealdawn\` taşıyan özel üyeler kapabilir!`)
                 .setColor('#000000')
                 .setFooter({ text: `Steal Dawn • Başlatan: @${interaction.user.username}` })
                 .setTimestamp();
@@ -603,8 +638,16 @@ client.on('interactionCreate', async interaction => {
             return;
         }
 
-        // DROP ÖDÜLÜ KAPMA (Free Log Kaldırılmış Stabil Sürüm)
+        // DROP ÖDÜLÜ KAPMA (Özel Rol Kontrollü Sürüm)
         if (interaction.customId.startsWith('drop_')) {
+            // 🚫 ROL KONTROLÜ
+            if (!interaction.member.roles.cache.has(DROP_ROL_ID)) {
+                return interaction.reply({ 
+                    content: `❌ **Üzgünüm!** Bu drop ödülünü sadece durumuna (Custom Status) \`.gg/stealdawn\` yazıp **özel rolü alan üyeler** kapabilir!`, 
+                    flags: MessageFlags.Ephemeral 
+                });
+            }
+
             const dropId = interaction.customId.replace('drop_', '');
             const dropVeri = await db.get(`drop_data_${dropId}`);
 
