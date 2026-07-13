@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder, StringSelectMenuBuilder, MessageFlags, PermissionsBitField, AttachmentBuilder, Collection } = require('discord.js');
-const { QuickDB } = require('quick.db');
-const db = new QuickDB();
+const Jsoning = require('jsoning');
+const db = new Jsoning('database.json');
 const express = require('express');
 const ms = require('ms');
 
@@ -127,7 +127,7 @@ async function cekilisBitir(channelId, messageId) {
     const guncelMesaj = await kanal.messages.fetch(messageId).catch(() => null);
     if (!guncelMesaj) return;
 
-    await db.set(`cekilis_${messageId}.bitti`, true);
+    await db.set(`cekilis_${messageId}`, { ...veri, bitti: true });
 
     const reaction = guncelMesaj.reactions.cache.get('🎉');
     if (!reaction) return;
@@ -212,22 +212,22 @@ client.once('ready', async (c) => {
     });
 
     const tumVeriler = await db.all();
-    const aktifCekilisler = tumVeriler.filter(v => v.id.startsWith('cekilis_'));
+    if (tumVeriler) {
+        for (const [key, veri] of Object.entries(tumVeriler)) {
+            if (key.startsWith('cekilis_')) {
+                const msgId = key.replace('cekilis_', '');
+                if (veri && veri.bitti === true) continue;
 
-    for (const cekilis of aktifCekilisler) {
-        const msgId = cekilis.id.replace('cekilis_', '');
-        const veri = cekilis.value;
-        
-        if (veri && veri.bitti === true) continue;
-
-        if (veri && veri.bitisMs) {
-            const kalanSure = veri.bitisMs - Date.now();
-            if (kalanSure <= 0) {
-                await cekilisBitir(veri.channelId, msgId);
-            } else {
-                setTimeout(async () => {
-                    await cekilisBitir(veri.channelId, msgId);
-                }, kalanSure);
+                if (veri && veri.bitisMs) {
+                    const kalanSure = veri.bitisMs - Date.now();
+                    if (kalanSure <= 0) {
+                        await cekilisBitir(veri.channelId, msgId);
+                    } else {
+                        setTimeout(async () => {
+                            await cekilisBitir(veri.channelId, msgId);
+                        }, kalanSure);
+                    }
+                }
             }
         }
     }
@@ -375,8 +375,10 @@ client.on('interactionCreate', async interaction => {
             const guildMember = await interaction.guild.members.fetch(yetkili.id);
             if (!guildMember.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: '❌ Yetki hatası.', flags: MessageFlags.Ephemeral });
             
-            await db.add(`vouch_${yetkili.id}`, 1);
-            const toplam = await db.get(`vouch_${yetkili.id}`);
+            let currentVouch = await db.get(`vouch_${yetkili.id}`) || 0;
+            currentVouch += 1;
+            await db.set(`vouch_${yetkili.id}`, currentVouch);
+            
             const yildizlar = '⭐'.repeat(yildizSayisi);
             
             const embed = new EmbedBuilder()
@@ -385,7 +387,7 @@ client.on('interactionCreate', async interaction => {
                     { name: '🎁 Alınan Ödül', value: odul, inline: true }, 
                     { name: '👤 Ödülü Alan', value: `${alanUye}`, inline: true }, 
                     { name: '⭐ Değerlendirme', value: yildizlar, inline: true },
-                    { name: '🔢 Yetkili Toplam Vouch', value: `\`${toplam} adet\``, inline: true },
+                    { name: '🔢 Yetkili Toplam Vouch', value: `\`${currentVouch} adet\``, inline: true },
                     { name: '📝 Not', value: ekNot, inline: false }
                 )
                 .setColor('#000000')
@@ -490,13 +492,14 @@ client.on('interactionCreate', async interaction => {
         // LEGIT
         if (interaction.commandName === 'legit') {
             const alan = interaction.options.getUser('alan');
-            await db.add(`legit_${alan.id}`, 1);
-            const toplam = await db.get(`legit_${alan.id}`);
+            let currentLegit = await db.get(`legit_${alan.id}`) || 0;
+            currentLegit += 1;
+            await db.set(`legit_${alan.id}`, currentLegit);
             
             const embed = new EmbedBuilder()
                 .setTitle('✅ Legit Onayı!')
                 .setColor('#000000')
-                .addFields({ name: '👤 Alan', value: `${alan}`, inline: true }, { name: '🔢 Toplam Legit', value: `${toplam}`, inline: true })
+                .addFields({ name: '👤 Alan', value: `${alan}`, inline: true }, { name: '🔢 Toplam Legit', value: `${currentLegit}`, inline: true })
                 .setImage(interaction.options.getAttachment('image').url)
                 .setFooter({ text: 'Steal Dawn' });
             
@@ -599,7 +602,7 @@ client.on('interactionCreate', async interaction => {
                 await interaction.reply({ content: `✅ Oy kaydedildi.`, flags: MessageFlags.Ephemeral });
             }
 
-            await db.set(`anket_${anketId}.oylar`, anketVeri.oylar);
+            await db.set(`anket_${anketId}`, anketVeri);
             const toplamOy = Object.keys(anketVeri.oylar).length;
             let yeniAciklama = `**Soru:** ${anketVeri.soru}\n\n`;
 
@@ -620,7 +623,9 @@ client.on('interactionCreate', async interaction => {
             const dropVeri = await db.get(`drop_data_${dropId}`);
             if (!dropVeri || dropVeri.bitti === true) return interaction.reply({ content: '❌ Bu drop kapılmış!', flags: MessageFlags.Ephemeral });
 
-            await db.set(`drop_data_${dropId}.bitti`, true);
+            dropVeri.bitti = true;
+            await db.set(`drop_data_${dropId}`, dropVeri);
+            
             const basarisizRow = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`kapildi_${dropId}`).setLabel(`KAPILDI! (${interaction.user.username})`).setStyle(ButtonStyle.Secondary).setDisabled(true));
             const guncelEmbed = EmbedBuilder.from(interaction.message.embeds[0]).setDescription(`**Ödül:** \`${dropVeri.gorunen}\`\n\n🎉 **Ödülü Kapan:** ${interaction.user}`).setColor('#2f3136');
             await interaction.message.edit({ embeds: [guncelEmbed], components: [basarisizRow] });
