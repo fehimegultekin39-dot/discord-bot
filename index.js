@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder, StringSelectMenuBuilder, MessageFlags, PermissionsBitField, AttachmentBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, REST, Routes, SlashCommandBuilder, StringSelectMenuBuilder, MessageFlags, PermissionsBitField, AttachmentBuilder, Collection } = require('discord.js');
 const { QuickDB } = require('quick.db');
 const db = new QuickDB();
 const express = require('express');
@@ -13,6 +13,7 @@ app.listen(3000);
 const DESTEK_ROL_ID = '1520515365786882178';
 const YETKILI_ROL_ID = '1520515365786882178'; 
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1520473034694066361/1520530500022960198';
+const PREFIX = '-'; // İstediğin mesaj ön eki
 
 function parseTurkceSure(sure) {
     return sure
@@ -25,15 +26,20 @@ function parseTurkceSure(sure) {
         .replace(/gun|gün|g/g, 'd');
 }
 
+// Davet takibi için GuildInvites niyetini (intent) ekledik
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds, 
         GatewayIntentBits.GuildMessages, 
         GatewayIntentBits.MessageContent, 
         GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildMembers  
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildInvites
     ]
 });
+
+// Davet kodlarının kullanım verilerini önbellekte tutmak için koleksiyon
+client.invites = new Collection();
 
 // SLASH KOMUT TANIMLAMALARI
 const commands = [
@@ -72,8 +78,45 @@ const commands = [
         .addStringOption(o => o.setName('secenek_b').setDescription('B Seçeneği').setRequired(true))
         .addStringOption(o => o.setName('secenek_c').setDescription('C Seçeneği (İsteğe bağlı)').setRequired(false))
         .addStringOption(o => o.setName('secenek_d').setDescription('D Seçeneği (İsteğe bağlı)').setRequired(false))
-        .addStringOption(o => o.setName('secenek_e').setDescription('E Seçeneği (İsteğe bağlı)').setRequired(false))
+        .addStringOption(o => o.setName('secenek_e').setDescription('E Seçeneği (İsteğe bağlı)').setRequired(false)),
+
+    new SlashCommandBuilder()
+        .setName('davet')
+        .setDescription('Davet istatistiklerinizi veya belirtilen kullanıcının istatistiklerini gösterir.')
+        .addUserOption(o => o.setName('kullanici').setDescription('Davetlerine bakmak istediğiniz kullanıcı').setRequired(false))
 ].map(c => c.toJSON());
+
+// YARDIMCI VERİ TABANI FONKSİYONU
+async function getUserInviteData(userId) {
+    const veri = await db.get(`invData_${userId}`);
+    if (!veri) {
+        return { regular: 0, fake: 0, leaves: 0, rejoins: 0, bonus: 0 };
+    }
+    return {
+        regular: veri.regular || 0,
+        fake: veri.fake || 0,
+        leaves: veri.leaves || 0,
+        rejoins: veri.rejoins || 0,
+        bonus: veri.bonus || 0
+    };
+}
+
+// ŞIK DAVET EMBED TASARIMI
+function createInviteEmbed(targetUser, data) {
+    const total = data.regular + data.rejoins + data.bonus;
+    return new EmbedBuilder()
+        .setTitle(`📩 ${targetUser.username} Davet Bilgileri`)
+        .setDescription(`Toplam **${total}** geçerli davetin bulunuyor!\n\n` +
+                     `✅ **Normal (Düzenli):** ${data.regular}\n` +
+                     `🔄 **Tekrar Giren (Rejoin):** ${data.rejoins}\n` +
+                     `❌ **Ayrılan (Leave):** ${data.leaves}\n` +
+                     `⚠️ **Sahte (Fake):** ${data.fake}\n` +
+                     `✨ **Bonus:** ${data.bonus}`)
+        .setColor('#000000')
+        .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
+        .setTimestamp()
+        .setFooter({ text: `Nexus Davet Takip Sistemi` });
+}
 
 // ÇEKİLİŞ BİTİRME FONKSİYONU
 async function cekilisBitir(channelId, messageId) {
@@ -161,6 +204,17 @@ client.once('ready', async (c) => {
     
     console.log(`${c.user.tag} aktif!`);
 
+    // Mevcut sunucu davet kodlarını hafızaya çekiyoruz
+    client.guilds.cache.forEach(async (guild) => {
+        try {
+            const currentInvites = await guild.invites.fetch();
+            client.invites.set(guild.id, new Collection(currentInvites.map(i => [i.code, i.uses])));
+            console.log(`[DAVET] ${guild.name} sunucusunun davet kodları hafızaya alındı.`);
+        } catch (err) {
+            console.log(`[DAVET HATA] ${guild.name} davetleri alınamadı.`);
+        }
+    });
+
     const tumVeriler = await db.all();
     const aktifCekilisler = tumVeriler.filter(v => v.id.startsWith('cekilis_'));
 
@@ -183,6 +237,76 @@ client.once('ready', async (c) => {
         }
     }
 });
+
+// DAVET TAKİP TETİKLEYİCİLERİ
+client.on('guildMemberAdd', async (member) => {
+    try {
+        const newInvites = await member.guild.invites.fetch();
+        const oldInvites = client.invites.get(member.guild.id);
+        
+        const invite = newInvites.find(i => oldInvites && i.uses > oldInvites.get(i.code));
+        
+        if (invite && invite.inviter) {
+            const inviterId = invite.inviter.id;
+            const data = await getUserInviteData(inviterId);
+            
+            // Rejoin Kontrolü: Bu kullanıcı daha önce girip çıkmış mı?
+            const joinHistory = await db.get(`joinedBefore_${member.guild.id}_${member.id}`);
+            
+            if (joinHistory) {
+                const previousInviterId = joinHistory;
+                const prevData = await getUserInviteData(previousInviterId);
+                
+                if (prevData.leaves > 0) prevData.leaves -= 1;
+                data.rejoins += 1;
+                
+                await db.set(`invData_${previousInviterId}`, prevData);
+            } else {
+                // İlk defa geliyorsa sahte hesap kontrolü (3 günden yeniyse fake)
+                const isFake = (Date.now() - member.user.createdTimestamp) < 259200000;
+                if (isFake) {
+                    data.fake += 1;
+                } else {
+                    data.regular += 1;
+                }
+            }
+            
+            await db.set(`joinedBefore_${member.guild.id}_${member.id}`, inviterId);
+            await db.set(`invData_${inviterId}`, data);
+        }
+        
+        client.invites.set(member.guild.id, new Collection(newInvites.map(i => [i.code, i.uses])));
+    } catch (err) {
+        console.error('Katılma davet takibi hatası:', err);
+    }
+});
+
+client.on('guildMemberRemove', async (member) => {
+    try {
+        const inviterId = await db.get(`joinedBefore_${member.guild.id}_${member.id}`);
+        if (inviterId) {
+            const data = await getUserInviteData(inviterId);
+            data.leaves += 1;
+            if (data.regular > 0) data.regular -= 1;
+            
+            await db.set(`invData_${inviterId}`, data);
+        }
+    } catch (err) {
+        console.error('Ayrılma davet takibi hatası:', err);
+    }
+});
+
+// Sunucuda yeni davet oluşturulursa hafızaya ekle
+client.on('guildInviteCreate', async (invite) => {
+    if (!client.invites.has(invite.guild.id)) client.invites.set(invite.guild.id, new Collection());
+    client.invites.get(invite.guild.id).set(invite.code, invite.uses);
+});
+
+// Davet silinirse hafızadan kaldır
+client.on('guildInviteDelete', async (invite) => {
+    if (client.invites.has(invite.guild.id)) client.invites.get(invite.guild.id).delete(invite.code);
+});
+
 
 // ETKİLEŞİM YÖNETİMİ (INTERACTIONS)
 client.on('interactionCreate', async interaction => {
@@ -483,6 +607,14 @@ client.on('interactionCreate', async interaction => {
 
             await interaction.reply({ embeds: [embed], components: [row] });
         }
+
+        // SLASH DAVET KOMUTU
+        if (interaction.commandName === 'davet') {
+            const hedefUye = interaction.options.getUser('kullanici') || interaction.user;
+            const data = await getUserInviteData(hedefUye.id);
+            const embed = createInviteEmbed(hedefUye, data);
+            await interaction.reply({ embeds: [embed] });
+        }
     }
 
     // SELECTION MENUS LOGIC
@@ -579,7 +711,7 @@ client.on('interactionCreate', async interaction => {
                 const barKarakterSayisi = Math.round(yuzde / 10);
                 const bar = '⬛'.repeat(barKarakterSayisi) + '⬜'.repeat(10 - barKarakterSayisi);
 
-                yeniAciklama += `${s.emoji} **${s.metin}:** \`<b>${yuzde}%</b>\` (${oylarSayisi} Oy)\n> ${bar}\n\n`;
+                yeniAciklama += `${s.emoji} **${s.metin}:** \`${yuzde}%\` (${oylarSayisi} Oy)\n> ${bar}\n\n`;
             });
 
             const guncelEmbed = EmbedBuilder.from(interaction.message.embeds[0])
@@ -611,34 +743,46 @@ client.on('interactionCreate', async interaction => {
                     .setLabel(`KAPILDI! (Kazanan: ${interaction.user.username})`)
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(true)
-                );
+            );
 
             const guncelEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-                .setDescription(`**Ödül:** \`${dropVeri.gorunen}\`\n\n🎉 **Ödül Kapıldı!**\n**Kazanan:** ${interaction.user} ⚡\n*Ödül otomatik olarak kazananın DM kutusuna gönderildi.*`)
-                .setColor('#FF0000')
-                .setTimestamp();
+                .setDescription(`**Ödül:** \`${dropVeri.gorunen}\`\n\n🎉 **Ödülü Kapan:** ${interaction.user}\n\n*Ödül kazanan kişinin DM kutusuna gönderildi!*`)
+                .setColor('#2f3136');
 
             await interaction.message.edit({ embeds: [guncelEmbed], components: [basarisizRow] });
 
             try {
                 if (dropVeri.gizli) {
-                    await interaction.user.send({ content: `🎉 **Tebrikler!** Sunucudaki drop ödülünü ilk sen kaptın!\n🎁 **Ödülün:** \`${dropVeri.gizli}\`` });
+                    await interaction.user.send({ content: `🎉 **Tebrikler, kodu kaptın!** İşte ödülün:\n\`${dropVeri.gizli}\`` });
                 }
-                
                 if (dropVeri.gorsel) {
-                    await interaction.user.send({ content: `🎉 **Tebrikler!** Drop görsel ödülün aşağıdadır:`, files: [dropVeri.gorsel] });
+                    await interaction.user.send({ content: `🎉 **Tebrikler, görsel ödülü kaptın!**`, files: [new AttachmentBuilder(dropVeri.gorsel)] });
                 }
-
                 if (dropVeri.txt) {
-                    await interaction.user.send({ content: `🎉 **Tebrikler!** Drop dosya ödülün ekteki .txt belgesindedir:`, files: [new AttachmentBuilder(dropVeri.txt, { name: dropVeri.txtIsim || 'odul.txt' })] });
+                    await interaction.user.send({ content: `🎉 **Tebrikler, dosya ödülünü kaptın!**`, files: [new AttachmentBuilder(dropVeri.txt, { name: dropVeri.txtIsim || 'odul.txt' })] });
                 }
-
-                return interaction.reply({ content: '✅ **Tebrikler!** Ödül otomatik olarak DM kutuna gönderildi. Lütfen kontrol et!', flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: '✅ Ödül DM kutunuza gönderildi!', flags: MessageFlags.Ephemeral });
             } catch (err) {
-                console.error("DM gönderilemedi:", err);
-                return interaction.reply({ content: '⚠️ **Ödülü kaptın fakat DM kutun kapalı!** Ödülünü elden teslim almak için lütfen bir yetkiliyle iletişime geç.', flags: MessageFlags.Ephemeral });
+                console.error(err);
+                await interaction.reply({ content: '❌ DM kutunuz kapalı olduğu için ödül gönderilemedi! Lütfen yetkililerle iletişime geçin.', flags: MessageFlags.Ephemeral });
             }
         }
+    }
+});
+
+// MESAJ TABANLI KOMUTLAR (-i ve -invite DİNLEYİCİSİ)
+client.on('messageCreate', async (message) => {
+    if (message.author.bot || !message.content.startsWith(PREFIX)) return;
+
+    const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+    const command = args.shift().toLowerCase();
+
+    if (command === 'i' || command === 'invite') {
+        const hedefUye = message.mentions.users.first() || message.author;
+        const data = await getUserInviteData(hedefUye.id);
+        const embed = createInviteEmbed(hedefUye, data);
+        
+        await message.reply({ embeds: [embed] });
     }
 });
 
