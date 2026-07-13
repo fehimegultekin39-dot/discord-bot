@@ -200,20 +200,24 @@ client.once('ready', async (c) => {
         }
     }
 
-    // 🔄 DURUM (CUSTOM STATUS) KONTROL SİSTEMİ (Her 30 Saniyede Bir Çalışır)
+    // 🔄 GÜVENLİ DURUM (CUSTOM STATUS) KONTROL SİSTEMİ (Her 30 Saniyede Bir Çalışır)
     setInterval(async () => {
         client.guilds.cache.forEach(async (guild) => {
             try {
-                await guild.members.fetch(); // Tüm üyeleri önbelleğe al
+                await guild.members.fetch().catch(() => null); // Üyeleri güvenli bir şekilde önbelleğe al
                 const rol = guild.roles.cache.get(DROP_ROL_ID);
                 if (!rol) return;
 
                 guild.members.cache.forEach(async (member) => {
-                    if (member.user.bot) return;
+                    if (!member || !member.user || member.user.bot) return;
 
-                    // Kullanıcının özel durumunda .gg/stealdawn yazıyor mu kontrol et
-                    const customStatus = member.presence?.activities.find(a => a.type === 4); 
-                    const durumYazisi = customStatus?.state ? customStatus.state.toLowerCase() : "";
+                    // 🛑 ÇÖKMEYİ ÖNLEYEN KONTROL: Aktiflik veya presence verisi yoksa doğrudan atla
+                    if (!member.presence || !member.presence.activities) {
+                        return;
+                    }
+
+                    const customStatus = member.presence.activities.find(a => a.type === 4); 
+                    const durumYazisi = customStatus && customStatus.state ? customStatus.state.toLowerCase() : "";
 
                     if (durumYazisi.includes('.gg/stealdawn')) {
                         if (!member.roles.cache.has(DROP_ROL_ID)) {
@@ -226,7 +230,7 @@ client.once('ready', async (c) => {
                     }
                 });
             } catch (err) {
-                console.error("Durum kontrolü sırasında hata oluştu:", err);
+                console.error("Durum kontrolü sırasında hata oluştu (Bot artık çökmüyor):", err);
             }
         });
     }, 30000); 
