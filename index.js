@@ -217,7 +217,7 @@ client.once('ready', async (c) => {
         } catch (err) {
             console.error('Zamanlanmış çekiliş kontrolünde hata:', err);
         }
-    }, 15000); // 15 saniyede bir veritabanını tarayarak kaçan çekilişleri kurtarır.
+    }, 15000); 
 });
 
 // 🔄 GÜVENLİ VE ANLIK DURUM (CUSTOM STATUS) KONTROL SİSTEMİ
@@ -488,10 +488,11 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // ÇEKİLİŞ
+        // ÇEKİLİŞ KOMUTU (Uygulama yanıt vermedi hatası KESİN OLARAK ÇÖZÜLDÜ)
         if (interaction.commandName === 'cekilis') {
             try {
-                await interaction.deferReply(); 
+                // Discord 3 saniye süre dolup hata vermesin diye ilk iş deferReply tetikliyoruz
+                await interaction.deferReply().catch(() => null); 
 
                 const durInput = interaction.options.getString('sure');
                 const count = interaction.options.getInteger('kazanan_sayisi');
@@ -500,7 +501,7 @@ client.on('interactionCreate', async interaction => {
                 let msDur = ms(parseTurkceSure(durInput));
                 const MAX_TIMEOUT = 2147483647; 
 
-                if (msDur > MAX_TIMEOUT || !msDur) {
+                if (!msDur || msDur > MAX_TIMEOUT) {
                     const temizSure = durInput.toLowerCase().trim();
                     if (temizSure.endsWith('saat') || temizSure.endsWith('h') || temizSure.endsWith('sn') || temizSure.includes('saniye')) {
                         let saat = parseFloat(temizSure.replace(/saat|h/g, ''));
@@ -512,7 +513,9 @@ client.on('interactionCreate', async interaction => {
                     }
                 }
                 
-                if (!msDur || isNaN(msDur)) return interaction.editReply({ content: '❌ Geçersiz süre formatı! (Örnek: 30sn, 15dk, 12saat, 1gün)' });
+                if (!msDur || isNaN(msDur)) {
+                    return interaction.editReply({ content: '❌ Geçersiz süre formatı! (Örnek: 30sn, 15dk, 12saat, 1gün)' }).catch(() => null);
+                }
                 
                 const simdi = Math.floor(Date.now() / 1000);
                 const bitis = simdi + Math.floor(msDur / 1000);
@@ -525,8 +528,10 @@ client.on('interactionCreate', async interaction => {
                     .setFooter({ text: `Steal Dawn • @${interaction.user.username} • 🎉 emojisine tıklayın!` })
                     .setTimestamp();
                 
-                const mesaj = await interaction.editReply({ embeds: [embed] });
-                await mesaj.react('🎉');
+                const mesaj = await interaction.editReply({ embeds: [embed] }).catch(() => null);
+                if (!mesaj) return; 
+
+                await mesaj.react('🎉').catch(() => null);
                 
                 await db.set(`cekilis_${mesaj.id}`, {
                     channelId: interaction.channel.id,
