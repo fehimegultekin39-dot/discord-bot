@@ -359,12 +359,15 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // 📩 /DMDUYURU KOMUTU
+        // 📩 /DMDUYURU KOMUTU (ZAMAN AŞIMI KORUMALI)
         if (interaction.commandName === 'dmduyuru') {
             const mesaj = interaction.options.getString('mesaj');
             const baslikMetni = interaction.options.getString('baslik') || 'DUYURU';
 
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            await interaction.reply({ 
+                content: '🔄 **DM Duyurusu başlatıldı!** Üyelere sırayla gönderiliyor, işlem bittiğinde size bilgi verilecektir...', 
+                flags: MessageFlags.Ephemeral 
+            });
 
             const duyuruEmbed = new EmbedBuilder()
                 .setTitle(`📢 ${baslikMetni.toUpperCase()}`)
@@ -376,24 +379,32 @@ client.on('interactionCreate', async interaction => {
                     iconURL: interaction.guild.iconURL({ dynamic: true }) 
                 });
 
-            const members = await interaction.guild.members.fetch();
-            let basarili = 0;
-            let basarisiz = 0;
-
-            for (const [id, member] of members) {
-                if (member.user.bot) continue;
-
+            (async () => {
                 try {
-                    await member.send({ embeds: [duyuruEmbed] });
-                    basarili++;
-                } catch (err) {
-                    basarisiz++;
-                }
-            }
+                    const members = await interaction.guild.members.fetch();
+                    let basarili = 0;
+                    let basarisiz = 0;
 
-            await interaction.editReply({ 
-                content: `✅ **DM Duyurusu Tamamlandı!**\n\n🟢 **Başarıyla Gönderilen:** \`${basarili}\` kişi\n🔴 **DM Kapalı/Başarısız:** \`${basarisiz}\` kişi` 
-            });
+                    for (const [id, member] of members) {
+                        if (member.user.bot) continue;
+
+                        try {
+                            await member.send({ embeds: [duyuruEmbed] });
+                            basarili++;
+                        } catch (err) {
+                            basarisiz++;
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+
+                    await interaction.followUp({ 
+                        content: `✅ **DM Duyurusu Tamamlandı!**\n\n🟢 **Başarıyla Gönderilen:** \`${basarili}\` kişi\n🔴 **DM Kapalı/Başarısız:** \`${basarisiz}\` kişi`,
+                        flags: MessageFlags.Ephemeral 
+                    });
+                } catch (err) {
+                    console.error("DM Duyuru Hatası:", err);
+                }
+            })();
         }
         
         // 🎁 /DROP KOMUTU
