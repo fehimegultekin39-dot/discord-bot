@@ -359,50 +359,75 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // 📩 /DMDUYURU KOMUTU (ZAMAN AŞIMI KORUMALI)
+        // 📩 /DMDUYURU KOMUTU (SARI SİYAHDAN TEMİZLENDİ & CANLI YÜZDE ÇUBUĞU EKLENDİ)
         if (interaction.commandName === 'dmduyuru') {
             const mesaj = interaction.options.getString('mesaj');
             const baslikMetni = interaction.options.getString('baslik') || 'DUYURU';
 
-            await interaction.reply({ 
-                content: '🔄 **DM Duyurusu başlatıldı!** Üyelere sırayla gönderiliyor, işlem bittiğinde size bilgi verilecektir...', 
-                flags: MessageFlags.Ephemeral 
-            });
-
-            const duyuruEmbed = new EmbedBuilder()
-                .setTitle(`📢 ${baslikMetni.toUpperCase()}`)
-                .setDescription(mesaj.replace(/\\n/g, '\n'))
-                .setColor('#f1c40f')
-                .setTimestamp()
-                .setFooter({ 
-                    text: `${interaction.guild.name} Yönetimi`, 
-                    iconURL: interaction.guild.iconURL({ dynamic: true }) 
-                });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             (async () => {
                 try {
                     const members = await interaction.guild.members.fetch();
+                    const insanUyeler = members.filter(m => !m.user.bot);
+                    const toplam = insanUyeler.size;
+
                     let basarili = 0;
                     let basarisiz = 0;
+                    let sayac = 0;
 
-                    for (const [id, member] of members) {
-                        if (member.user.bot) continue;
+                    const barYap = (mevcut, toplamSayi) => {
+                        const yuzde = Math.round((mevcut / toplamSayi) * 10);
+                        return '🟩'.repeat(yuzde) + '⬜'.repeat(10 - yuzde);
+                    };
 
+                    const gonderilecekEmbed = new EmbedBuilder()
+                        .setTitle(`📢 ${baslikMetni.toUpperCase()}`)
+                        .setDescription(mesaj.replace(/\\n/g, '\n'))
+                        .setColor('#f1c40f')
+                        .setTimestamp()
+                        .setFooter({ 
+                            text: `${interaction.guild.name} Yönetimi`, 
+                            iconURL: interaction.guild.iconURL({ dynamic: true }) 
+                        });
+
+                    for (const [id, member] of insanUyeler) {
+                        sayac++;
                         try {
-                            await member.send({ embeds: [duyuruEmbed] });
+                            await member.send({ embeds: [gonderilecekEmbed] });
                             basarili++;
                         } catch (err) {
                             basarisiz++;
                         }
-                        await new Promise(resolve => setTimeout(resolve, 100));
+
+                        // Her 5 kişide bir veya en son üyede canlı bilgiyi güncelle
+                        if (sayac % 5 === 0 || sayac === toplam) {
+                            const yuzdeSayi = Math.floor((sayac / toplam) * 100);
+                            const ilerlemeBari = barYap(sayac, toplam);
+
+                            // Embed yazmadığımız için solundaki o sarı dikey çizgi kalkar
+                            await interaction.editReply({ 
+                                content: `🔄 **DM Duyurusu Gönderiliyor...**\n` +
+                                         `İlerleme: [${ilerlemeBari}] **%${yuzdeSayi}**\n` +
+                                         `📊 Toplam: **${toplam}** | ✅ Başarılı: **${basarili}** | ❌ Kapalı DM: **${basarisiz}**`
+                            });
+                        }
+
+                        // Discord Hız Limitine (Rate Limit) Takılmamak için 1.2sn Bekle
+                        await new Promise(resolve => setTimeout(resolve, 1200));
                     }
 
-                    await interaction.followUp({ 
-                        content: `✅ **DM Duyurusu Tamamlandı!**\n\n🟢 **Başarıyla Gönderilen:** \`${basarili}\` kişi\n🔴 **DM Kapalı/Başarısız:** \`${basarisiz}\` kişi`,
-                        flags: MessageFlags.Ephemeral 
+                    // İşlem Bittiğinde
+                    await interaction.editReply({ 
+                        content: `✅ **DM Duyuru İşlemi Başarıyla Tamamlandı!**\n\n` +
+                                 `📊 Toplam Hedef: **${toplam}**\n` +
+                                 `🟢 Gönderilen: **${basarili}**\n` +
+                                 `🔴 DM Kapalı/İletilemeyen: **${basarisiz}**`
                     });
+
                 } catch (err) {
                     console.error("DM Duyuru Hatası:", err);
+                    await interaction.editReply({ content: '❌ DM Duyurusu gönderilirken bir hata oluştu.' });
                 }
             })();
         }
