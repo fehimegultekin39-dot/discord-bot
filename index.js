@@ -663,6 +663,19 @@ client.on('interactionCreate', async interaction => {
     // 🔘 BUTON DİNLEYİCİLERİ
     else if (interaction.isButton()) {
         
+        // 🔒 TICKET KAPATMA BUTONU
+        if (interaction.customId === 'ticket_kapat') {
+            await interaction.reply({ content: '🔒 **Ticket 5 saniye içinde kapatılıyor ve siliniyor...**' });
+            
+            setTimeout(async () => {
+                try {
+                    await interaction.channel.delete();
+                } catch (err) {
+                    console.error("Kanal silme hatası:", err);
+                }
+            }, 5000);
+        }
+
         // DROP BUTONU
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
@@ -803,7 +816,21 @@ client.on('interactionCreate', async interaction => {
                     .setColor('#f1c40f')
                     .setTimestamp();
 
-                await ticketKanal.send({ content: `${interaction.user} | <@&${DESTEK_ROL_ID}>`, embeds: [ticketEmbed] });
+                // 🔒 TICKET KAPATMA BUTONU
+                const closeRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('ticket_kapat')
+                        .setLabel('Talebi Kapat')
+                        .setStyle(ButtonStyle.Danger)
+                        .setEmoji('🔒')
+                );
+
+                await ticketKanal.send({ 
+                    content: `${interaction.user} | <@&${DESTEK_ROL_ID}>`, 
+                    embeds: [ticketEmbed], 
+                    components: [closeRow] 
+                });
+
                 await interaction.editReply({ content: `✅ Ticket kanalınız oluşturuldu: ${ticketKanal}` });
             } catch (err) {
                 console.error("Ticket kanalı oluşturma hatası:", err);
