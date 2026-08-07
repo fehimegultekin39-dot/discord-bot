@@ -51,48 +51,27 @@ const client = new Client({
     ]
 });
 
-// SLASH KOMUT TANIMLAMALARI
+// 📌 TÜM SLASH KOMUTLARININ TANIMLANMASI
 const commands = [
+    // 📢 BOTUN SİZİN YERİNİZE MESAJ YAZMASI (/say VE /yaz)
     new SlashCommandBuilder()
-        .setName('drop')
-        .setDescription('Ödüllü otomatik drop başlatır.')
-        .addStringOption(o => o.setName('gorunen').setDescription('Kanala yansıyacak ödül ismi (Örn: 1x Minecraft Premium)').setRequired(true))
-        .addStringOption(o => o.setName('teslim_edilecek_odul').setDescription('Kazananın DMsine gidecek gizli hesap/kod').setRequired(false))
-        .addAttachmentOption(o => o.setName('gorsel_dosyasi').setDescription('PC veya Telefondan fotoğraf yükleyin').setRequired(false))
-        .addAttachmentOption(o => o.setName('txt_dosyasi').setDescription('Kazananın DMsine gönderilecek .txt uzantılı dosya').setRequired(false)),
-        
-    new SlashCommandBuilder().setName('cekilis').setDescription('Yeni çekiliş başlatır.').addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)).addIntegerOption(o => o.setName('kazanan_sayisi').setDescription('Kazanan sayısı').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)),
-    new SlashCommandBuilder().setName('ticketpanel').setDescription('Destek panelini gönderir.'),
-        
-    new SlashCommandBuilder()
-        .setName('vouch')
-        .setDescription('Kullanıcıya vouch verir.')
-        .addStringOption(o => o.setName('odul').setDescription('Ödül adı').setRequired(true))
-        .addUserOption(o => o.setName('veren').setDescription('Ödülü veren yetkili kişi').setRequired(true))
-        .addUserOption(o => o.setName('alan').setDescription('Ödülü alan kişi').setRequired(true))
-        .addIntegerOption(o => o.setName('yildiz').setDescription('Değerlendirme yıldızı (1-5)').setRequired(true).setMinValue(1).setMaxValue(5))
-        .addStringOption(o => o.setName('not').setDescription('Eklemek istediğiniz not').setRequired(true)),
-        
-    new SlashCommandBuilder().setName('yetkilipuan').setDescription('Yetkilinin vouch ve legit puanlarına bakar.').addUserOption(o => o.setName('kullanici').setDescription('Bakmak istediğiniz kişi')),
-    new SlashCommandBuilder().setName('ban').setDescription('Kullanıcıyı banlar.').addUserOption(o => o.setName('kisi').setDescription('Banlanacak kişi').setRequired(true)),
-    new SlashCommandBuilder().setName('unban').setDescription('Ban kaldırır.').addStringOption(o => o.setName('kisi_id').setDescription('Kişi ID').setRequired(true)),
-    new SlashCommandBuilder().setName('mute').setDescription('Kullanıcıyı susturur.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)).addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)),
-    new SlashCommandBuilder().setName('unmute').setDescription('Susturmayı kaldırır.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)),
-    new SlashCommandBuilder().setName('legit').setDescription('Legit onayı oluşturur.').addAttachmentOption(o => o.setName('image').setDescription('Kanıt görseli').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Verilen ödül').setRequired(true)).addUserOption(o => o.setName('alan').setDescription('Ödülü alan kişi').setRequired(true)).addStringOption(o => o.setName('not_').setDescription('Ekstra not').setRequired(false)),
-    
-    new SlashCommandBuilder()
-        .setName('anket')
-        .setDescription('Gelişmiş çoktan seçmeli anket başlatır.')
-        .addStringOption(o => o.setName('soru').setDescription('Anket sorusu nedir?').setRequired(true))
-        .addStringOption(o => o.setName('secenek_a').setDescription('A Seçeneği').setRequired(true))
-        .addStringOption(o => o.setName('secenek_b').setDescription('B Seçeneği').setRequired(true))
-        .addStringOption(o => o.setName('secenek_c').setDescription('C Seçeneği').setRequired(false))
-        .addStringOption(o => o.setName('secenek_d').setDescription('D Seçeneği').setRequired(false))
-        .addStringOption(o => o.setName('secenek_e').setDescription('E Seçeneği').setRequired(false)),
+        .setName('say')
+        .setDescription('Bot sizin yerinize belirttiğiniz kanala mesaj gönderir.')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator)
+        .addStringOption(o => o.setName('mesaj').setDescription('Gönderilecek mesaj metni').setRequired(true))
+        .addChannelOption(o => o.setName('kanal').setDescription('Gönderilecek kanal (Seçilmezse bulunduğunuz kanal)').addChannelTypes(0).setRequired(false)),
 
     new SlashCommandBuilder()
+        .setName('yaz')
+        .setDescription('Bot sizin yerinize belirttiğiniz kanala mesaj gönderir.')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator)
+        .addStringOption(o => o.setName('mesaj').setDescription('Gönderilecek mesaj metni').setRequired(true))
+        .addChannelOption(o => o.setName('kanal').setDescription('Gönderilecek kanal (Seçilmezse bulunduğunuz kanal)').addChannelTypes(0).setRequired(false)),
+
+    // 📢 KANAL DUYURU KOMUTU
+    new SlashCommandBuilder()
         .setName('duyuru')
-        .setDescription('Bot aracılığıyla sunucuda şık bir duyuru yapar.')
+        .setDescription('Bot aracılığıyla kanalda şık bir duyuru yapar.')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator) 
         .addStringOption(o => o.setName('mesaj').setDescription('Duyuru metni').setRequired(true))
         .addStringOption(o => o.setName('baslik').setDescription('Duyuru başlığı').setRequired(false))
@@ -104,21 +83,77 @@ const commands = [
         .addChannelOption(o => o.setName('kanal').setDescription('Gönderilecek kanal').addChannelTypes(0).setRequired(false))
         .addStringOption(o => o.setName('alt_mesaj').setDescription('Çizginin altında görünecek dipnot').setRequired(false)),
 
-    // 🤖 SİZİN YERİNİZE İSTEDİĞİNİZ KANALA MESAJ ATMA KOMUTU
-    new SlashCommandBuilder()
-        .setName('yaz')
-        .setDescription('Bot sizin yerinize istediğiniz kanala mesaj atar.')
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator)
-        .addStringOption(o => o.setName('mesaj').setDescription('Gönderilecek mesaj metni').setRequired(true))
-        .addChannelOption(o => o.setName('kanal').setDescription('Gönderilecek kanal (Seçilmezse mevcut kanal)').addChannelTypes(0).setRequired(false)),
-
-    // 📢 HERKESE DM DUYURU ATMA KOMUTU
+    // 📩 DM DUYURU KOMUTU
     new SlashCommandBuilder()
         .setName('dmduyuru')
-        .setDescription('Sunucudaki tüm üyelere DM üzerinden duyuru atar.')
+        .setDescription('Sunucudaki tüm üyelere DM üzerinden duyuru gönderir.')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator)
         .addStringOption(o => o.setName('mesaj').setDescription('Gönderilecek DM mesajı').setRequired(true))
-        .addStringOption(o => o.setName('baslik').setDescription('Duyuru başlığı').setRequired(false))
+        .addStringOption(o => o.setName('baslik').setDescription('Duyuru başlığı').setRequired(false)),
+
+    // 🎁 DROP KOMUTU
+    new SlashCommandBuilder()
+        .setName('drop')
+        .setDescription('Ödüllü otomatik drop başlatır.')
+        .addStringOption(o => o.setName('gorunen').setDescription('Kanala yansıyacak ödül ismi (Örn: 1x Minecraft Premium)').setRequired(true))
+        .addStringOption(o => o.setName('teslim_edilecek_odul').setDescription('Kazananın DMsine gidecek gizli hesap/kod').setRequired(false))
+        .addAttachmentOption(o => o.setName('gorsel_dosyasi').setDescription('PC veya Telefondan fotoğraf yükleyin').setRequired(false))
+        .addAttachmentOption(o => o.setName('txt_dosyasi').setDescription('Kazananın DMsine gönderilecek .txt uzantılı dosya').setRequired(false)),
+        
+    // 🎉 ÇEKİLİŞ KOMUTU
+    new SlashCommandBuilder()
+        .setName('cekilis')
+        .setDescription('Yeni çekiliş başlatır.')
+        .addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true))
+        .addIntegerOption(o => o.setName('kazanan_sayisi').setDescription('Kazanan sayısı').setRequired(true))
+        .addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)),
+
+    // 🎫 TICKET PANELİ KOMUTU
+    new SlashCommandBuilder()
+        .setName('ticketpanel')
+        .setDescription('Destek panelini gönderir.'),
+        
+    // ⭐ VOUCH KOMUTU
+    new SlashCommandBuilder()
+        .setName('vouch')
+        .setDescription('Kullanıcıya vouch verir.')
+        .addStringOption(o => o.setName('odul').setDescription('Ödül adı').setRequired(true))
+        .addUserOption(o => o.setName('veren').setDescription('Ödülü veren yetkili kişi').setRequired(true))
+        .addUserOption(o => o.setName('alan').setDescription('Ödülü alan kişi').setRequired(true))
+        .addIntegerOption(o => o.setName('yildiz').setDescription('Değerlendirme yıldızı (1-5)').setRequired(true).setMinValue(1).setMaxValue(5))
+        .addStringOption(o => o.setName('not').setDescription('Eklemek istediğiniz not').setRequired(true)),
+        
+    // 📊 YETKİLİ PUAN KOMUTU
+    new SlashCommandBuilder()
+        .setName('yetkilipuan')
+        .setDescription('Yetkilinin vouch ve legit puanlarına bakar.')
+        .addUserOption(o => o.setName('kullanici').setDescription('Bakmak istediğiniz kişi')),
+
+    // 🔨 MODERASYON KOMUTLARI
+    new SlashCommandBuilder().setName('ban').setDescription('Kullanıcıyı banlar.').addUserOption(o => o.setName('kisi').setDescription('Banlanacak kişi').setRequired(true)),
+    new SlashCommandBuilder().setName('unban').setDescription('Ban kaldırır.').addStringOption(o => o.setName('kisi_id').setDescription('Kişi ID').setRequired(true)),
+    new SlashCommandBuilder().setName('mute').setDescription('Kullanıcıyı susturur.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)).addStringOption(o => o.setName('sure').setDescription('Süre (30sn, 15dk, 2saat, 1g)').setRequired(true)),
+    new SlashCommandBuilder().setName('unmute').setDescription('Susturmayı kaldırır.').addUserOption(o => o.setName('kisi').setDescription('Susturulacak kişi').setRequired(true)),
+    
+    // ✅ LEGİT KOMUTU
+    new SlashCommandBuilder()
+        .setName('legit')
+        .setDescription('Legit onayı oluşturur.')
+        .addAttachmentOption(o => o.setName('image').setDescription('Kanıt görseli').setRequired(true))
+        .addStringOption(o => o.setName('odul').setDescription('Verilen ödül').setRequired(true))
+        .addUserOption(o => o.setName('alan').setDescription('Ödülü alan kişi').setRequired(true))
+        .addStringOption(o => o.setName('not_').setDescription('Ekstra not').setRequired(false)),
+    
+    // 📊 ANKET KOMUTU
+    new SlashCommandBuilder()
+        .setName('anket')
+        .setDescription('Gelişmiş çoktan seçmeli anket başlatır.')
+        .addStringOption(o => o.setName('soru').setDescription('Anket sorusu nedir?').setRequired(true))
+        .addStringOption(o => o.setName('secenek_a').setDescription('A Seçeneği').setRequired(true))
+        .addStringOption(o => o.setName('secenek_b').setDescription('B Seçeneği').setRequired(true))
+        .addStringOption(o => o.setName('secenek_c').setDescription('C Seçeneği').setRequired(false))
+        .addStringOption(o => o.setName('secenek_d').setDescription('D Seçeneği').setRequired(false))
+        .addStringOption(o => o.setName('secenek_e').setDescription('E Seçeneği').setRequired(false))
 ].map(c => c.toJSON());
 
 // ÇEKİLİŞ BİTİRME FONKSİYONU
@@ -229,7 +264,7 @@ client.once('ready', async (c) => {
         }
     }
 
-    // Custom Status Kontrolü
+    // Custom Status Kontrolü (Durumunda .gg/stealdawn olanlara otomatik rol verme)
     setInterval(async () => {
         client.guilds.cache.forEach(async (guild) => {
             try {
@@ -262,12 +297,12 @@ client.once('ready', async (c) => {
     }, 30000); 
 });
 
-// ETKİLEŞİM YÖNETİMİ
+// ETKİLEŞİM VE KOMUT YÖNETİMİ
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
 
-        // 🤖 YAZ KOMUTU (SİZİN YERİNİZE BOTUN MESAJ ATMASI)
-        if (interaction.commandName === 'yaz') {
+        // 🤖 /SAY VEYA /YAZ KOMUTLARI
+        if (interaction.commandName === 'say' || interaction.commandName === 'yaz') {
             const mesaj = interaction.options.getString('mesaj');
             const kanal = interaction.options.getChannel('kanal') || interaction.channel;
 
@@ -277,48 +312,12 @@ client.on('interactionCreate', async interaction => {
                 await kanal.send({ content: duzgunMesaj });
                 await interaction.reply({ content: `✅ Mesajınız ${kanal} kanalına gönderildi!`, flags: MessageFlags.Ephemeral });
             } catch (err) {
-                console.error("Yaz komutu hatası:", err);
+                console.error("Mesaj gönderme hatası:", err);
                 await interaction.reply({ content: '❌ Mesaj gönderilirken bir hata oluştu.', flags: MessageFlags.Ephemeral });
             }
         }
 
-        // 📢 DM DUYURU KOMUTU
-        if (interaction.commandName === 'dmduyuru') {
-            const mesaj = interaction.options.getString('mesaj');
-            const baslikMetni = interaction.options.getString('baslik') || 'DUYURU';
-
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-            const duyuruEmbed = new EmbedBuilder()
-                .setTitle(`📢 ${baslikMetni.toUpperCase()}`)
-                .setDescription(mesaj.replace(/\\n/g, '\n'))
-                .setColor('#f1c40f')
-                .setTimestamp()
-                .setFooter({ 
-                    text: `${interaction.guild.name} Yönetimi`, 
-                    iconURL: interaction.guild.iconURL({ dynamic: true }) 
-                });
-
-            const members = await interaction.guild.members.fetch();
-            let basarili = 0;
-            let basarisiz = 0;
-
-            for (const [id, member] of members) {
-                if (member.user.bot) continue;
-
-                try {
-                    await member.send({ embeds: [duyuruEmbed] });
-                    basarili++;
-                } catch (err) {
-                    basarisiz++;
-                }
-            }
-
-            await interaction.editReply({ 
-                content: `✅ **DM Duyurusu Tamamlandı!**\n\n🟢 **Başarıyla Gönderilen:** \`${basarili}\` kişi\n🔴 **DM Kapalı/Başarısız:** \`${basarisiz}\` kişi` 
-            });
-        }
-
+        // 📢 /DUYURU KOMUTU
         if (interaction.commandName === 'duyuru') {
             const mesaj = interaction.options.getString('mesaj');
             const kanal = interaction.options.getChannel('kanal') || interaction.channel;
@@ -359,7 +358,45 @@ client.on('interactionCreate', async interaction => {
                 await interaction.reply({ content: '❌ Duyuru gönderilemedi.', flags: MessageFlags.Ephemeral });
             }
         }
+
+        // 📩 /DMDUYURU KOMUTU
+        if (interaction.commandName === 'dmduyuru') {
+            const mesaj = interaction.options.getString('mesaj');
+            const baslikMetni = interaction.options.getString('baslik') || 'DUYURU';
+
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+            const duyuruEmbed = new EmbedBuilder()
+                .setTitle(`📢 ${baslikMetni.toUpperCase()}`)
+                .setDescription(mesaj.replace(/\\n/g, '\n'))
+                .setColor('#f1c40f')
+                .setTimestamp()
+                .setFooter({ 
+                    text: `${interaction.guild.name} Yönetimi`, 
+                    iconURL: interaction.guild.iconURL({ dynamic: true }) 
+                });
+
+            const members = await interaction.guild.members.fetch();
+            let basarili = 0;
+            let basarisiz = 0;
+
+            for (const [id, member] of members) {
+                if (member.user.bot) continue;
+
+                try {
+                    await member.send({ embeds: [duyuruEmbed] });
+                    basarili++;
+                } catch (err) {
+                    basarisiz++;
+                }
+            }
+
+            await interaction.editReply({ 
+                content: `✅ **DM Duyurusu Tamamlandı!**\n\n🟢 **Başarıyla Gönderilen:** \`${basarili}\` kişi\n🔴 **DM Kapalı/Başarısız:** \`${basarisiz}\` kişi` 
+            });
+        }
         
+        // 🎁 /DROP KOMUTU
         if (interaction.commandName === 'drop') {
             const gorunenOdul = interaction.options.getString('gorunen');
             const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
@@ -401,6 +438,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
         }
 
+        // 🎫 /TICKETPANEL KOMUTU
         if (interaction.commandName === 'ticketpanel') {
             const row = new ActionRowBuilder().addComponents(
                 new StringSelectMenuBuilder()
@@ -427,6 +465,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
+        // ⭐ /VOUCH KOMUTU
         if (interaction.commandName === 'vouch') {
             const yetkili = interaction.options.getUser('veren');
             const alanUye = interaction.options.getUser('alan');
@@ -458,6 +497,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
+        // 📊 /YETKİLİPUAN KOMUTU
         if (interaction.commandName === 'yetkilipuan') {
             const hedef = interaction.options.getUser('kullanici') || interaction.user;
             const vSayi = await db.get(`vouch_${hedef.id}`) || 0;
@@ -476,6 +516,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
+        // 🎉 /CEKILIS KOMUTU
         if (interaction.commandName === 'cekilis') {
             await interaction.deferReply(); 
 
@@ -517,6 +558,7 @@ client.on('interactionCreate', async interaction => {
             }, msDur);
         }
 
+        // 🔨 MODERASYON KOMUTLARI
         if (['ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
             if (!interaction.member.roles.cache.has(YETKILI_ROL_ID)) return interaction.reply({ content: 'Yetkin yok!', flags: MessageFlags.Ephemeral });
             
@@ -549,6 +591,7 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
+        // ✅ /LEGIT KOMUTU
         if (interaction.commandName === 'legit') {
             const alan = interaction.options.getUser('alan');
             await db.add(`legit_${alan.id}`, 1);
@@ -567,6 +610,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
+        // 📊 /ANKET KOMUTU
         if (interaction.commandName === 'anket') {
             const soru = interaction.options.getString('soru');
             const anketId = Date.now();
@@ -605,10 +649,10 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // 🔘 BUTON İŞLEMLERİ (DROP, ANKET, REROLL HATA DÜZELTMELERİ)
+    // 🔘 BUTON DİNLEYİCİLERİ
     else if (interaction.isButton()) {
         
-        // DROP ÖDÜL BUTONU
+        // DROP BUTONU
         if (interaction.customId.startsWith('drop_')) {
             const dropId = interaction.customId.replace('drop_', '');
             const dropData = await db.get(`drop_data_${dropId}`);
@@ -665,7 +709,7 @@ client.on('interactionCreate', async interaction => {
             }
         }
 
-        // ANKET OYLAMA BUTONLARI
+        // ANKET OY BUTONU
         if (interaction.customId.startsWith('anket_oy_')) {
             const parts = interaction.customId.split('_');
             const anketId = parts[2];
