@@ -109,4 +109,5 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId === 'nexus_gen_booster') {
         await interaction.reply({ content: '❌ **Erişim Engellendi:** Bu kategoriye yalnızca sunucumuza takviye yapmış olan **Booster** üyelerimiz erişebilir.', flags: MessageFlags.Ephemeral });
     }
-});
+})
+
