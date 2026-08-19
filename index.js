@@ -447,8 +447,10 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [baslangicEmbed], components: [row] });
         }
 
-        // /TICKETPANEL
+        // /TICKETPANEL (Görseldeki "Uygulama Yanıt Vermedi" Hatası Kesin Düzeltildi!)
         if (interaction.commandName === 'ticketpanel') {
+            await interaction.deferReply({ ephemeral: true }); // Discord'a işlem aldığımızı bildiriyoruz
+
             const row = new ActionRowBuilder().addComponents(
                 new StringSelectMenuBuilder()
                     .setCustomId('ticket_secim')
@@ -471,7 +473,8 @@ client.on('interactionCreate', async interaction => {
                 .setColor('#f1c40f')
                 .setFooter({ text: 'Steal Dawn • Destek Sistemi' });
 
-            await interaction.reply({ embeds: [embed], components: [row] });
+            await interaction.channel.send({ embeds: [embed], components: [row] });
+            await interaction.editReply({ content: '✅ Ticket paneli başarıyla gönderildi!' });
         }
 
         // /VOUCH
@@ -625,7 +628,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
 
-        // /ANKET (Tamamlanan Kısım)
+        // /ANKET
         if (interaction.commandName === 'anket') {
             const soru = interaction.options.getString('soru');
             const anketId = Date.now();
@@ -667,7 +670,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // 2️⃣ TICKET AÇMA SEÇİM MENÜSÜ (Bozuk/Eksik Olan Kısım Düzeltildi)
+    // 2️⃣ TICKET AÇMA SEÇİM MENÜSÜ
     if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_secim') {
         const secim = interaction.values[0];
         const guild = interaction.guild;
