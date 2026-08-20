@@ -337,7 +337,9 @@ client.on('interactionCreate', async interaction => {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const kategori = interaction.values[0];
         const guild = interaction.guild;
-        const channelName = `ticket-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+        
+        // Kanal ismi düzenlendi: ticket-kategori-kullaniciadi şeklinde araya tireler eklendi
+        const channelName = `ticket-${kategori}-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
 
         try {
             const ticketChannel = await guild.channels.create({
@@ -498,7 +500,7 @@ client.on('interactionCreate', async interaction => {
             const txt = interaction.options.getAttachment('txt_dosyasi');
         
             if (!gizliOdul && !gorsel && !txt) {
-                return interaction.reply({ content: '❌ Bilgi, görsel veya txt dosyasından en az birini eklemelisin!', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ Bilgi, görsel veya txt dosyasından en az birini ekelmelisin!', flags: MessageFlags.Ephemeral });
             }
 
             const dropId = Date.now();
