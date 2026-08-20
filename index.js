@@ -177,22 +177,23 @@ async function cekilisBitir(channelId, messageId) {
             .setColor('#f1c40f')
             .setFooter({ text: `Steal Dawn • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'}` })
             .setTimestamp();
-         
+        
         return guncelMesaj.edit({ embeds: [iptalEmbed], components: [] });
     }
 
     const kazananlar = katilimcilar.random(Math.min(veri.count, katilimcilar.size));
     const kazananMention = Array.isArray(kazananlar) ? kazananlar.map(u => u.toString()).join(', ') : kazananlar.toString();
+    const baslangicTimestamp = veri.simdi;
     const bitisTimestamp = Math.floor(veri.bitisMs / 1000);
 
     const sonEmbed = new EmbedBuilder()
         .setTitle('🏆 ÇEKİLİŞ SONA ERDİ!')
-        .setDescription(`**Ödül:** \`${veri.prize}\``)
+        .setDescription(`**Ödül:** \`${veri.prize}\`\n\n⚠️ **Ödülü almak için 1 günün var! Ticket açmazsan aksi takdirde ödül verilmeyecektir.**`)
         .addFields(
             { name: '👑 Kazanan(lar)', value: `> ${kazananMention}`, inline: true }, 
             { name: '🎟 Katılımcı', value: `\`${katilimcilar.size} kişi\``, inline: true },
             { name: '👤 Başlatan', value: `> ${baslatanUye}`, inline: false },
-            { name: '📅 Çekiliş Zamanı', value: `*Başlangıç:* <t:${veri.simdi}:F>\n*Bitiş:* <t:${bitisTimestamp}:F>`, inline: false }
+            { name: '📅 Çekiliş Zamanı', value: `*Başlangıç:* <t:${baslangicTimestamp}:F>\n*Bitiş:* <t:${bitisTimestamp}:F>`, inline: false }
         )
         .setColor('#f1c40f')
         .setFooter({ text: `Steal Dawn • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'}` })
@@ -207,7 +208,7 @@ async function cekilisBitir(channelId, messageId) {
     );
 
     await guncelMesaj.edit({ embeds: [sonEmbed], components: [ticketRow] });
-    await kanal.send({ content: `🎉 **Tebrikler!** ${kazananMention} **kazandı!** ⚡` });
+    await kanal.send({ content: `🎉 **Tebrikler!** ${kazananMention} **kazandı!** Ödülünü almak için 1 gün içinde ticket açmalısın, aksi takdirde verilmeyecektir. ⚡` });
 }
 
 // ÇEKİLİŞ KONTROL DÖNGÜSÜ
@@ -319,7 +320,6 @@ client.on('interactionCreate', async interaction => {
         }
 
         if (interaction.customId.startsWith('drop_')) {
-            // HATA ÇÖZÜMÜ: Zaman aşımı (interaction failed) almamak için anında yanıt veriliyor
             await interaction.deferUpdate().catch(() => {});
 
             const dropId = interaction.customId.replace('drop_', '');
@@ -329,7 +329,6 @@ client.on('interactionCreate', async interaction => {
                 return interaction.followUp({ content: '❌ Bu ödül daha önce kapıldı!', flags: MessageFlags.Ephemeral }).catch(() => {});
             }
 
-            // HATA ÇÖZÜMÜ: Ağır çalışan .fetch() yerine doğrudan interaction.member kullanıldı
             const uye = interaction.member; 
             if (!uye || !uye.roles.cache.has(DROP_ROL_ID)) {
                 return interaction.followUp({ content: '❌ Durumunda **.gg/stealdawn** olmalı!', flags: MessageFlags.Ephemeral }).catch(() => {});
@@ -368,6 +367,23 @@ client.on('interactionCreate', async interaction => {
                 await interaction.followUp({ content: `✅ Ödülü kaptın ancak **DM kutun kapalı!**`, flags: MessageFlags.Ephemeral }).catch(() => {});
             }
             return;
+        }
+
+        // ANKET OY VERME SİSTEMİ
+        if (interaction.customId.startsWith('anket_oy_')) {
+            const parts = interaction.customId.split('_');
+            const anketId = parts[2];
+            const secenekId = parts[3];
+
+            const anketVerisi = db.get(`anket_${anketId}`);
+            if (!anketVerisi) {
+                return interaction.reply({ content: '❌ Bu anket artık aktif değil!', flags: MessageFlags.Ephemeral });
+            }
+
+            anketVerisi.oylar[interaction.user.id] = secenekId;
+            db.set(`anket_${anketId}`, anketVerisi);
+
+            return interaction.reply({ content: `✅ Oyunuz başarıyla kaydedildi (**${secenekId.toUpperCase()}** seçeneği)!`, flags: MessageFlags.Ephemeral });
         }
     }
 
@@ -506,24 +522,26 @@ client.on('interactionCreate', async interaction => {
             const durInput = interaction.options.getString('sure');
             const count = interaction.options.getInteger('kazanan_sayisi');
             const prize = interaction.options.getString('odul');
-             
+            
             const msDur = parseTurkceSureToMs(durInput);
             if (!msDur || isNaN(msDur)) {
                 return interaction.editReply({ content: '❌ Geçersiz süre! (Örn: 10sn, 15dk)' });
             }
-             
+            
             const simdi = Math.floor(Date.now() / 1000);
             const bitis = simdi + Math.floor(msDur / 1000);
             const bitisMs = Date.now() + msDur;
-             
+            
             const embed = new EmbedBuilder()
                 .setTitle('🎉 STEAL DAWN ÇEKİLİŞ 🎉')
-                .setDescription(`**Ödül:** \`${prize}\`\n**Kazanan:** \`${count}\`\n\n⏳ **Bitiş:** <t:${bitis}:R>`)
-                .setColor('#f1c40f');
-             
+                .setDescription(`**Ödül:** \`${prize}\`\n**Kazanan Sayısı:** \`${count}\`\n\n📅 **Başlangıç:** <t:${simdi}:F>\n⏳ **Bitiş:** <t:${bitis}:F>\n\n⚠️ *Ödülü almak için 1 günün var, ticket açmazsan aksi taktirde verilmeyecektir!*`)
+                .setColor('#f1c40f')
+                .setFooter({ text: `Başlatan: ${interaction.user.username}` })
+                .setTimestamp();
+            
             const mesaj = await interaction.editReply({ embeds: [embed] });
             await mesaj.react('🎉');
-             
+            
             db.set(`cekilis_${mesaj.id}`, {
                 channelId: interaction.channel.id,
                 prize,
