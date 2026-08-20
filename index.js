@@ -245,7 +245,7 @@ async function cekilisBitir(channelId, messageId) {
 
     const sonEmbed = new EmbedBuilder()
         .setTitle('🏆 ÇEKİLİŞ SONA ERDİ!')
-        .setDescription(`**Ödül:** \`${veri.prize}\`\n\n⚠️ **Ödülü almak için 1 günün var! Lütfen aşağıdan ${TICKET_KANAL_LINKI} kanalına gidip neden geldiğinize uygun kategoriyi seçerek ticket açın (Kafanıza göre rastgele kategori seçmeyin!).**`)
+        .setDescription(`**Ödül:** \`${veri.prize}\`\n\n⚠️ **Ödülü almak için 1 günün var! Lütfen aşağıdan <#${TICKET_KANAL_LINKI.split('/').pop()}> kanalına gidip neden geldiğinize uygun kategoriyi seçerek ticket açın (Kafanıza göre rastgele kategori seçmeyin!).**`)
         .addFields(
             { name: '👑 Kazanan(lar)', value: `> ${kazananMention}`, inline: true }, 
             { name: '🎟 Katılımcı', value: `\`${katilimcilar.size} kişi\``, inline: true },
@@ -530,14 +530,14 @@ client.on('interactionCreate', async interaction => {
                     .setCustomId('ticket_secim')
                     .setPlaceholder('Destek konusu seçiniz')
                     .addOptions([
-                        { label: 'Çekiliş Kazandım', value: 'cekilis_kazandim', emoji: '🔮' },
-                        { label: 'Drop Kazandım', value: 'drop_kazandim', emoji: '🎁' },
-                        { label: 'Hesap Satın Alıcam', value: 'hesap_satinal', emoji: '💲' },
-                        { label: 'Partnerlik', value: 'partnerlik', emoji: '🤝' },
-                        { label: 'Yetkili Alım', value: 'yetkili_alim', emoji: '🤖' },
-                        { label: 'Teknik Destek', value: 'teknik_destek', emoji: '🔧' },
-                        { label: 'Şikayet & Öneri', value: 'sikayet_oneri', emoji: '📝' },
-                        { label: 'Diğer', value: 'diger', emoji: '❓' }
+                        { label: 'Çekiliş Kazandım', value: 'cekilis_kazandim', description: 'Çekilişten ödül kazananlar için', emoji: '🔮' },
+                        { label: 'Drop Kazandım', value: 'drop_kazandim', description: 'Drop etkinliğinden ödül kazananlar için', emoji: '🎁' },
+                        { label: 'Hesap Satın Alıcam', value: 'hesap_satinal', description: 'Ürün veya hesap satın alımları için', emoji: '💲' },
+                        { label: 'Partnerlik', value: 'partnerlik', description: 'Sunucu partnerlik teklifleri için', emoji: '🤝' },
+                        { label: 'Yetkili Alım', value: 'yetkili_alim', description: 'Ekibimize katılmak isteyenler için', emoji: '🤖' },
+                        { label: 'Teknik Destek', value: 'teknik_destek', description: 'Yaşadığınız teknik sorunlar için', emoji: '🔧' },
+                        { label: 'Şikayet & Öneri', value: 'sikayet_oneri', description: 'Görüş, öneri ve şikayetleriniz için', emoji: '📝' },
+                        { label: 'Diğer', value: 'diger', description: 'Diğer tüm konular için', emoji: '❓' }
                     ])
             );
             const embed = new EmbedBuilder()
