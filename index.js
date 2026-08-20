@@ -245,7 +245,7 @@ async function cekilisBitir(channelId, messageId) {
 
     const sonEmbed = new EmbedBuilder()
         .setTitle('🏆 ÇEKİLİŞ SONA ERDİ!')
-        .setDescription(`**Ödül:** \`${veri.prize}\`\n\n⚠️ **Ödülü almak için 1 günün var! Ticket açmazsan aksi takdirde ödül verilmeyecektir.**`)
+        .setDescription(`**Ödül:** \`${veri.prize}\`\n\n⚠️ **Ödülü almak için 1 günün var! Lütfen aşağıdan ${TICKET_KANAL_LINKI} kanalına gidip neden geldiğinize uygun kategoriyi seçerek ticket açın (Kafanıza göre rastgele kategori seçmeyin!).**`)
         .addFields(
             { name: '👑 Kazanan(lar)', value: `> ${kazananMention}`, inline: true }, 
             { name: '🎟 Katılımcı', value: `\`${katilimcilar.size} kişi\``, inline: true },
@@ -265,7 +265,7 @@ async function cekilisBitir(channelId, messageId) {
     );
 
     await guncelMesaj.edit({ embeds: [sonEmbed], components: [ticketRow] });
-    await kanal.send({ content: `🎉 **Tebrikler!** ${kazananMention} **kazandı!** Ödülünü almak için 1 gün içinde ticket açmalısın, aksi takdirde verilmeyecektir. ⚡` });
+    await kanal.send({ content: `🎉 **Tebrikler!** ${kazananMention} **kazandı!** Ödülünü almak için 1 gün içinde <#${TICKET_KANAL_LINKI.split('/').pop()}> kanalına giderek **çekiliş kazandım** kategorisini seçip ticket açmalısın (Aksi takdirde ödül verilmeyecektir!). ⚡` });
 }
 
 // ÇEKİLİŞ KONTROL DÖNGÜSÜ
@@ -352,8 +352,8 @@ client.on('interactionCreate', async interaction => {
 
             const embed = new EmbedBuilder()
                 .setTitle('⚡ Steal Dawn Destek Talebi')
-                .setDescription(`Merhaba ${interaction.user}, yetkililerimiz en kısa sürede ilgilenecektir.`)
-                .addFields({ name: 'Kategori', value: `\`${kategori}\``, inline: true })
+                .setDescription(`Merhaba ${interaction.user}, yetkililerimiz en kısa sürede ilgilenecektir.\n\n⚠️ **Lütfen sebebinize uygun kategoriyi seçtiğinizden emin olun, kafanıza göre rastgele kategori seçmeyin!**`)
+                .addFields({ name: 'Seçilen Kategori', value: `\`${kategori}\``, inline: true })
                 .setColor('#f1c40f')
                 .setTimestamp();
 
@@ -540,7 +540,10 @@ client.on('interactionCreate', async interaction => {
                         { label: 'Diğer', value: 'diger', emoji: '❓' }
                     ])
             );
-            const embed = new EmbedBuilder().setTitle('⚡ Destek Merkezi').setDescription('Aşağıdaki menüden kategori seçerek ticket açabilirsiniz.').setColor('#f1c40f');
+            const embed = new EmbedBuilder()
+                .setTitle('⚡ Steal Dawn — Destek Merkezi')
+                .setDescription('Merhaba! Size nasıl yardımcı olabiliriz?\n\n⬇️ **Aşağıdan talebinize uygun kategoriyi seçerek ticket açabilirsiniz (Lütfen kafanıza göre rastgele kategori seçmeyin, sebebiniz neyse onu seçin).**')
+                .setColor('#f1c40f');
             await interaction.reply({ embeds: [embed], components: [row] });
         }
 
