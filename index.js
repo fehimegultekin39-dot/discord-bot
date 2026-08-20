@@ -16,16 +16,9 @@ const {
 } = require('discord.js');
 
 const fs = require('fs');
-const express = require('express');
-const ms = require('ms');
 
-// --- 7/24 EXPRESS SUNUCU ---
-const app = express();
-app.get('/', (req, res) => res.send('Bot 7/24 Aktif ve Çalışıyor!'));
-app.listen(3000, () => console.log('Express sunucusu 3000 portunda başlatıldı.'));
-
-// --- Kapsamlı JSON Veritabanı Sınıfı ---
-class AdvancedJSONDatabase {
+// --- VERİTABANI SINIFI ---
+class SimpleDB {
     constructor(filename = './db.json') {
         this.path = filename;
         if (!fs.existsSync(this.path)) {
@@ -33,7 +26,7 @@ class AdvancedJSONDatabase {
         }
     }
     
-    _read() {
+    read() {
         try {
             return JSON.parse(fs.readFileSync(this.path, 'utf8'));
         } catch (e) {
@@ -41,19 +34,19 @@ class AdvancedJSONDatabase {
         }
     }
     
-    _write(data) {
+    write(data) {
         fs.writeFileSync(this.path, JSON.stringify(data, null, 4));
     }
     
     get(key) {
-        const data = this._read();
+        const data = this.read();
         return data[key];
     }
     
     set(key, value) {
-        const data = this._read();
+        const data = this.read();
         data[key] = value;
-        this._write(data);
+        this.write(data);
         return value;
     }
     
@@ -63,26 +56,32 @@ class AdvancedJSONDatabase {
     }
     
     delete(key) {
-        const data = this._read();
+        const data = this.read();
         delete data[key];
-        this._write(data);
+        this.write(data);
     }
 
     allSync() {
-        const data = this._read();
+        const data = this.read();
         return Object.keys(data).map(id => ({ id, value: data[id] }));
     }
 }
 
-const db = new AdvancedJSONDatabase();
+const db = new SimpleDB();
+const express = require('express');
+const ms = require('ms');
 
-// --- AYARLAR VE SABİTLER ---
+const app = express();
+app.get('/', (req, res) => res.send('Bot 7/24 Aktif!'));
+app.listen(3000);
+
+// 🛠️ SUNUCU VE ROL AYARLARI
 const DESTEK_ROL_ID = '1520515365786882178';
 const YETKILI_ROL_ID = '1520515365786882178';
 const DROP_ROL_ID = '1526170253506379847'; 
 const TICKET_KANAL_LINKI = 'https://discord.com/channels/1520473034694066361/1520530500022960198';
 
-// Türkçe Süre Çevirici Fonksiyonu
+// TÜRKÇE SÜRE ÇEVİRİCİ
 function parseTurkceSureToMs(sureStr) {
     if (!sureStr) return null;
     const str = sureStr.toLowerCase().trim();
@@ -111,12 +110,12 @@ const client = new Client({
         GatewayIntentBits.GuildMessages, 
         GatewayIntentBits.MessageContent, 
         GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildMembers,      
+        GatewayIntentBits.GuildMembers,     
         GatewayIntentBits.GuildPresences    
     ]
 });
 
-// --- SLASH KOMUT TANIMLAMALARI ---
+// SLASH KOMUTLARI
 const commands = [
     new SlashCommandBuilder()
         .setName('drop')
@@ -125,16 +124,10 @@ const commands = [
         .addStringOption(o => o.setName('teslim_edilecek_odul').setDescription('Kazananın DMsine gidecek gizli hesap/kod').setRequired(false))
         .addAttachmentOption(o => o.setName('gorsel_dosyasi').setDescription('Görsel yükle').setRequired(false))
         .addAttachmentOption(o => o.setName('txt_dosyasi').setDescription('Dosya yükle').setRequired(false)),
-        
-    new SlashCommandBuilder()
-        .setName('cekilis')
-        .setDescription('Yeni çekiliş başlatır.')
-        .addStringOption(o => o.setName('sure').setDescription('Süre (10sn, 15dk, 2saat)').setRequired(true))
-        .addIntegerOption(o => o.setName('kazanan_sayisi').setDescription('Kazanan sayısı').setRequired(true))
-        .addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)),
-
+         
+    new SlashCommandBuilder().setName('cekilis').setDescription('Yeni çekiliş başlatır.').addStringOption(o => o.setName('sure').setDescription('Süre (10sn, 15dk, 2saat)').setRequired(true)).addIntegerOption(o => o.setName('kazanan_sayisi').setDescription('Kazanan sayısı').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)),
     new SlashCommandBuilder().setName('ticketpanel').setDescription('Destek panelini gönderir.'),
-        
+         
     new SlashCommandBuilder()
         .setName('vouch')
         .setDescription('Kullanıcıya vouch verir.')
@@ -143,48 +136,19 @@ const commands = [
         .addUserOption(o => o.setName('alan').setDescription('Ödülü alan kişi').setRequired(true))
         .addIntegerOption(o => o.setName('yildiz').setDescription('Yıldız (1-5)').setRequired(true).setMinValue(1).setMaxValue(5))
         .addStringOption(o => o.setName('not').setDescription('Not').setRequired(true)),
-        
+         
     new SlashCommandBuilder().setName('yetkilipuan').setDescription('Yetkili puanına bakar.').addUserOption(o => o.setName('kullanici').setDescription('Kişi')),
-    new SlashCommandBuilder().setName('ban').setDescription('Kullanıcıyı banlar.').addUserOption(o => o.setName('kisi').setDescription('Kişi').setRequired(true)),
-    new SlashCommandBuilder().setName('unban').setDescription('Kullanıcının banını kaldırır.').addStringOption(o => o.setName('kisi_id').setDescription('Kişi ID').setRequired(true)),
-    new SlashCommandBuilder().setName('mute').setDescription('Kullanıcıyı susturur.').addUserOption(o => o.setName('kisi').setDescription('Kişi').setRequired(true)).addStringOption(o => o.setName('sure').setDescription('Süre').setRequired(true)),
-    new SlashCommandBuilder().setName('unmute').setDescription('Kullanıcının susturmasını kaldırır.').addUserOption(o => o.setName('kisi').setDescription('Kişi').setRequired(true)),
-    
-    new SlashCommandBuilder()
-        .setName('legit')
-        .setDescription('Legit onayı gönderir.')
-        .addAttachmentOption(o => o.setName('image').setDescription('Kanıt görseli').setRequired(true))
-        .addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true))
-        .addUserOption(o => o.setName('alan').setDescription('Alan kişi').setRequired(true))
-        .addStringOption(o => o.setName('not_').setDescription('Not').setRequired(false)),
-
-    new SlashCommandBuilder()
-        .setName('anket')
-        .setDescription('Detaylı anket başlatır.')
-        .addStringOption(o => o.setName('soru').setDescription('Soru').setRequired(true))
-        .addStringOption(o => o.setName('secenek_a').setDescription('A seçeneği').setRequired(true))
-        .addStringOption(o => o.setName('secenek_b').setDescription('B seçeneği').setRequired(true))
-        .addStringOption(o => o.setName('secenek_c').setDescription('C seçeneği').setRequired(false))
-        .addStringOption(o => o.setName('secenek_d').setDescription('D seçeneği').setRequired(false))
-        .addStringOption(o => o.setName('secenek_e').setDescription('E seçeneği').setRequired(false)),
-
-    new SlashCommandBuilder()
-        .setName('duyuru')
-        .setDescription('Kanal üzerinden duyuru yapar.')
-        .addStringOption(o => o.setName('mesaj').setDescription('Mesaj').setRequired(true))
-        .addStringOption(o => o.setName('baslik').setDescription('Başlık').setRequired(false))
-        .addStringOption(o => o.setName('ping').setDescription('Bildirim türü').addChoices({ name: '@everyone', value: 'everyone' }, { name: '@here', value: 'here' }, { name: 'Yok', value: 'none' }).setRequired(false))
-        .addChannelOption(o => o.setName('kanal').setDescription('Gönderilecek kanal').addChannelTypes(ChannelType.GuildText).setRequired(false))
-        .addStringOption(o => o.setName('alt_mesaj').setDescription('Alt bilgi metni').setRequired(false)),
-
-    new SlashCommandBuilder()
-        .setName('dmduyuru')
-        .setDescription('Tüm sunucu üyelerine özelden (DM) duyuru atar.')
-        .addStringOption(o => o.setName('mesaj').setDescription('Gönderilecek mesaj').setRequired(true))
-        .addStringOption(o => o.setName('baslik').setDescription('Özel başlık').setRequired(false))
+    new SlashCommandBuilder().setName('ban').setDescription('Banlar.').addUserOption(o => o.setName('kisi').setDescription('Kişi').setRequired(true)),
+    new SlashCommandBuilder().setName('unban').setDescription('Ban kaldırır.').addStringOption(o => o.setName('kisi_id').setDescription('ID').setRequired(true)),
+    new SlashCommandBuilder().setName('mute').setDescription('Susturur.').addUserOption(o => o.setName('kisi').setDescription('Kişi').setRequired(true)).addStringOption(o => o.setName('sure').setDescription('Süre').setRequired(true)),
+    new SlashCommandBuilder().setName('unmute').setDescription('Susturma kaldırır.').addUserOption(o => o.setName('kisi').setDescription('Kişi').setRequired(true)),
+    new SlashCommandBuilder().setName('legit').setDescription('Legit onayı.').addAttachmentOption(o => o.setName('image').setDescription('Kanıt').setRequired(true)).addStringOption(o => o.setName('odul').setDescription('Ödül').setRequired(true)).addUserOption(o => o.setName('alan').setDescription('Alan').setRequired(true)).addStringOption(o => o.setName('not_').setDescription('Not').setRequired(false)),
+    new SlashCommandBuilder().setName('anket').setDescription('Anket başlatır.').addStringOption(o => o.setName('soru').setDescription('Soru').setRequired(true)).addStringOption(o => o.setName('secenek_a').setDescription('A').setRequired(true)).addStringOption(o => o.setName('secenek_b').setDescription('B').setRequired(true)).addStringOption(o => o.setName('secenek_c').setDescription('C').setRequired(false)).addStringOption(o => o.setName('secenek_d').setDescription('D').setRequired(false)).addStringOption(o => o.setName('secenek_e').setDescription('E').setRequired(false)),
+    new SlashCommandBuilder().setName('duyuru').setDescription('Duyuru yapar.').addStringOption(o => o.setName('mesaj').setDescription('Mesaj').setRequired(true)).addStringOption(o => o.setName('baslik').setDescription('Başlık').setRequired(false)).addStringOption(o => o.setName('ping').setDescription('Ping').addChoices({ name: '@everyone', value: 'everyone' }, { name: '@here', value: 'here' }, { name: 'Yok', value: 'none' }).setRequired(false)).addChannelOption(o => o.setName('kanal').setDescription('Kanal').addChannelTypes(0).setRequired(false)).addStringOption(o => o.setName('alt_mesaj').setDescription('Alt').setRequired(false)),
+    new SlashCommandBuilder().setName('dmduyuru').setDescription('DM duyurusu.').addStringOption(o => o.setName('mesaj').setDescription('Mesaj').setRequired(true)).addStringOption(o => o.setName('baslik').setDescription('Başlık').setRequired(false))
 ].map(c => c.toJSON());
 
-// --- ÇEKİLİŞ BİTİRME MOTORU ---
+// ÇEKİLİŞ BİTİRME FONKSİYONU
 async function cekilisBitir(channelId, messageId) {
     const veri = db.get(`cekilis_${messageId}`);
     if (!veri || veri.bitti === true) return; 
@@ -203,16 +167,17 @@ async function cekilisBitir(channelId, messageId) {
 
     await reaction.users.fetch();
     const katilimcilar = reaction.users.cache.filter(u => !u.bot);
+
     const baslatanUye = veri.baslatanId ? `<@${veri.baslatanId}>` : `@r2xzzs`;
 
     if (katilimcilar.size === 0) {
         const iptalEmbed = new EmbedBuilder()
             .setTitle('❌ ÇEKİLİŞ İPTAL EDİLDİ')
-            .setDescription(`**Ödül:** \`${veri.prize}\`\n\nYeterli katılımcı olmadığından çekiliş iptal edilmiştir.`)
+            .setDescription(`**Ödül:** \`${veri.prize}\`\n\nKatılımcı olmadığı için çekiliş iptal edildi.`)
             .setColor('#f1c40f')
             .setFooter({ text: `Steal Dawn • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'}` })
             .setTimestamp();
-        
+         
         return guncelMesaj.edit({ embeds: [iptalEmbed], components: [] });
     }
 
@@ -225,9 +190,9 @@ async function cekilisBitir(channelId, messageId) {
         .setDescription(`**Ödül:** \`${veri.prize}\``)
         .addFields(
             { name: '👑 Kazanan(lar)', value: `> ${kazananMention}`, inline: true }, 
-            { name: '🎟 Toplam Katılımcı', value: `\`${katilimcilar.size} kişi\``, inline: true },
-            { name: '👤 Başlatan Yetkili', value: `> ${baslatanUye}`, inline: false },
-            { name: '📅 Zaman Bilgisi', value: `*Başlangıç:* <t:${veri.simdi}:F>\n*Bitiş:* <t:${bitisTimestamp}:F>`, inline: false }
+            { name: '🎟 Katılımcı', value: `\`${katilimcilar.size} kişi\``, inline: true },
+            { name: '👤 Başlatan', value: `> ${baslatanUye}`, inline: false },
+            { name: '📅 Çekiliş Zamanı', value: `*Başlangıç:* <t:${veri.simdi}:F>\n*Bitiş:* <t:${bitisTimestamp}:F>`, inline: false }
         )
         .setColor('#f1c40f')
         .setFooter({ text: `Steal Dawn • Başlatan: ${veri.baslatanTag || 'Bilinmiyor'}` })
@@ -242,10 +207,10 @@ async function cekilisBitir(channelId, messageId) {
     );
 
     await guncelMesaj.edit({ embeds: [sonEmbed], components: [ticketRow] });
-    await kanal.send({ content: `🎉 **Tebrikler!** ${kazananMention} çekilişi **kazandı!** ⚡` });
+    await kanal.send({ content: `🎉 **Tebrikler!** ${kazananMention} **kazandı!** ⚡` });
 }
 
-// Çekiliş Periyodik Kontrolü
+// ÇEKİLİŞ KONTROL DÖNGÜSÜ
 function cekilisleriKontrolEt() {
     try {
         const tumVeriler = db.allSync();
@@ -266,22 +231,20 @@ function cekilisleriKontrolEt() {
     }
 }
 
-// --- CLIENT READY ---
 client.once('ready', async (c) => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try {
         await rest.put(Routes.applicationCommands(c.user.id), { body: commands });
-        console.log('Slash komutları başarıyla global olarak kaydedildi!');
+        console.log('Komutlar yüklendi!');
     } catch (error) {
-        console.error("Komut kaydetme hatası:", error);
+        console.error(error);
     }
+     
+    console.log(`${c.user.tag} aktif!`);
     
-    console.log(`${c.user.tag} hesabı ile bot aktif edildi.`);
-    
-    // Zamanlayıcılar
     setInterval(cekilisleriKontrolEt, 1000);
 
-    // Drop Durum (Status) Rol Kontrolü
+    // DROP ROL KONTROLÜ
     setInterval(async () => {
         client.guilds.cache.forEach(async (guild) => {
             try {
@@ -310,10 +273,8 @@ client.once('ready', async (c) => {
     }, 30000); 
 });
 
-// --- INTERACTION HANDLER ---
 client.on('interactionCreate', async interaction => {
-    
-    // 1. SELECT MENU YÖNETİMİ
+    // 1. SELECT MENU
     if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_secim') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const kategori = interaction.values[0];
@@ -333,8 +294,8 @@ client.on('interactionCreate', async interaction => {
 
             const embed = new EmbedBuilder()
                 .setTitle('⚡ Steal Dawn Destek Talebi')
-                .setDescription(`Merhaba ${interaction.user}, destek ekibimiz en kısa sürede sizinle ilgilenecektir.`)
-                .addFields({ name: 'Seçilen Kategori', value: `\`${kategori}\``, inline: true })
+                .setDescription(`Merhaba ${interaction.user}, yetkililerimiz ilgilenecektir.`)
+                .addFields({ name: 'Kategori', value: `\`${kategori}\``, inline: true })
                 .setColor('#f1c40f')
                 .setTimestamp();
 
@@ -343,35 +304,35 @@ client.on('interactionCreate', async interaction => {
             );
 
             await ticketChannel.send({ content: `<@&${DESTEK_ROL_ID}> | ${interaction.user}`, embeds: [embed], components: [closeRow] });
-            await interaction.editReply({ content: `✅ Destek talebi kanalınız başarıyla oluşturuldu: ${ticketChannel}` });
+            await interaction.editReply({ content: `✅ Destek talebiniz açıldı: ${ticketChannel}` });
         } catch (err) {
-            await interaction.editReply({ content: '❌ Destek kanalı oluşturulurken bir hata meydana geldi!' });
+            await interaction.editReply({ content: '❌ Kanal oluşturulamadı!' });
         }
-        return;
     }
 
-    // 2. BUTON YÖNETİMİ
+    // 2. BUTONLAR
     if (interaction.isButton()) {
         if (interaction.customId === 'ticket_kapat') {
-            await interaction.reply({ content: '🔒 Destek talebi kapatılıyor, kanal siliniyor...', flags: MessageFlags.Ephemeral });
+            await interaction.reply({ content: '🔒 Destek talebi kapatılıyor...', flags: MessageFlags.Ephemeral });
             setTimeout(async () => { await interaction.channel.delete().catch(() => null); }, 3000);
             return;
         }
 
         if (interaction.customId.startsWith('drop_')) {
-            // Zaman aşımı hatasını (Unknown Interaction) önlemek için anında güncelleme onayı veriliyor:
+            // HATA ÇÖZÜMÜ: Zaman aşımı (interaction failed) almamak için anında yanıt veriliyor
             await interaction.deferUpdate().catch(() => {});
 
             const dropId = interaction.customId.replace('drop_', '');
             const dropVeri = db.get(`drop_data_${dropId}`);
 
             if (!dropVeri || dropVeri.bitti) {
-                return interaction.followUp({ content: '❌ Üzgünüm, bu drop ödülü daha önce başka biri tarafından kapıldı!', flags: MessageFlags.Ephemeral }).catch(() => {});
+                return interaction.followUp({ content: '❌ Bu ödül daha önce kapıldı!', flags: MessageFlags.Ephemeral }).catch(() => {});
             }
 
-            const uye = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+            // HATA ÇÖZÜMÜ: Ağır çalışan .fetch() yerine doğrudan interaction.member kullanıldı
+            const uye = interaction.member; 
             if (!uye || !uye.roles.cache.has(DROP_ROL_ID)) {
-                return interaction.followUp({ content: '❌ Bu ödülü alabilmek için profil durumunda **.gg/stealdawn** taşımalısın!', flags: MessageFlags.Ephemeral }).catch(() => {});
+                return interaction.followUp({ content: '❌ Durumunda **.gg/stealdawn** olmalı!', flags: MessageFlags.Ephemeral }).catch(() => {});
             }
 
             dropVeri.bitti = true;
@@ -379,7 +340,7 @@ client.on('interactionCreate', async interaction => {
 
             const bitenEmbed = new EmbedBuilder()
                 .setTitle('🎉 STEAL DAWN DROP (KAPILDI)')
-                .setDescription(`**Ödül:** \`${dropVeri.gorunen}\`\n\n🏆 **Ödülü Alan:** ${interaction.user}`)
+                .setDescription(`**Ödül:** \`${dropVeri.gorunen}\`\n\n🏆 **Alan Kişi:** ${interaction.user}`)
                 .setColor('#e74c3c')
                 .setTimestamp();
 
@@ -391,28 +352,26 @@ client.on('interactionCreate', async interaction => {
 
             try {
                 const dmEmbed = new EmbedBuilder()
-                    .setTitle('🎁 Kazandığın Drop Ödülü!')
-                    .setDescription(`Tebrikler! **${dropVeri.gorunen}** ödülünü başarıyla kaptın.`)
+                    .setTitle('🎁 Drop Ödülün!')
+                    .setDescription(`Tebrikler! **${dropVeri.gorunen}** ödülünü kaptın.`)
                     .setColor('#f1c40f');
 
-                if (dropVeri.gizli) dmEmbed.addFields({ name: '🔑 Gizli Bilgi / Kod', value: `\`\`\`${dropVeri.gizli}\`\`\`` });
+                if (dropVeri.gizli) dmEmbed.addFields({ name: '🔑 Bilgi / Kod', value: `\`\`\`${dropVeri.gizli}\`\`\`` });
 
                 let dosyalar = [];
                 if (dropVeri.gorsel) dosyalar.push(dropVeri.gorsel);
                 if (dropVeri.txt) dosyalar.push({ attachment: dropVeri.txt, name: dropVeri.txtIsim || 'odul.txt' });
 
                 await interaction.user.send({ embeds: [dmEmbed], files: dosyalar.length > 0 ? dosyalar : undefined });
-                await interaction.followUp({ content: `✅ Ödül bilgileri başarıyla **Özel Mesaj (DM)** kutunuza gönderildi!`, flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.followUp({ content: `✅ Ödül başarıyla **DM (Özel Mesaj)** kutuna gönderildi!`, flags: MessageFlags.Ephemeral }).catch(() => {});
             } catch (err) {
-                await interaction.followUp({ content: `✅ Ödülü kaptınız ancak **DM kutunuz kapalı olduğu için** özel mesaj gönderilemedi!`, flags: MessageFlags.Ephemeral }).catch(() => {});
+                await interaction.followUp({ content: `✅ Ödülü kaptın ancak **DM kutun kapalı!**`, flags: MessageFlags.Ephemeral }).catch(() => {});
             }
             return;
         }
     }
 
-    // 3. SLASH KOMUT YÖNETİMİ
     if (interaction.isChatInputCommand()) {
-        
         if (interaction.commandName === 'dmduyuru') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
             const mesaj = interaction.options.getString('mesaj').replace(/\\n/g, '\n');
@@ -426,7 +385,7 @@ client.on('interactionCreate', async interaction => {
 
             const üyeler = await interaction.guild.members.fetch().catch(() => null);
             let basarili = 0, basarisiz = 0;
-            await interaction.editReply(`🔄 Üyelere DM duyurusu gönderiliyor...`);
+            await interaction.editReply(`🔄 Gönderiliyor...`);
 
             for (const [id, member] of üyeler) {
                 if (member.user.bot) continue;
@@ -438,8 +397,7 @@ client.on('interactionCreate', async interaction => {
                 }
                 await new Promise(r => setTimeout(r, 150));
             }
-            await interaction.followUp({ content: `✅ İşlem tamamlandı! Başarılı: ${basarili}, Başarısız: ${basarisiz}`, flags: MessageFlags.Ephemeral });
-            return;
+            await interaction.followUp({ content: `✅ Tamamlandı! Başarılı: ${basarili}, Başarısız: ${basarisiz}`, flags: MessageFlags.Ephemeral });
         }
 
         if (interaction.commandName === 'duyuru') {
@@ -456,18 +414,17 @@ client.on('interactionCreate', async interaction => {
             let icerik = pingTipi === 'everyone' ? '@everyone' : pingTipi === 'here' ? '@here' : '';
 
             await kanal.send({ content: icerik || undefined, embeds: [embed] });
-            await interaction.reply({ content: `✅ Duyuru başarıyla gönderildi!`, flags: MessageFlags.Ephemeral });
-            return;
+            await interaction.reply({ content: `✅ Gönderildi!`, flags: MessageFlags.Ephemeral });
         }
-        
+         
         if (interaction.commandName === 'drop') {
             const gorunenOdul = interaction.options.getString('gorunen');
             const gizliOdul = interaction.options.getString('teslim_edilecek_odul');
             const gorsel = interaction.options.getAttachment('gorsel_dosyasi');
             const txt = interaction.options.getAttachment('txt_dosyasi');
-            
+             
             if (!gizliOdul && !gorsel && !txt) {
-                return interaction.reply({ content: '❌ Gizli ödül metni, görsel veya txt dosyası seçeneklerinden en az birini eklemelisiniz!', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '❌ Bilgi, görsel veya txt eklemelisin!', flags: MessageFlags.Ephemeral });
             }
 
             const dropId = Date.now();
@@ -483,22 +440,21 @@ client.on('interactionCreate', async interaction => {
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId(`drop_${dropId}`).setLabel('ÖDÜLÜ KAP!').setStyle(ButtonStyle.Success).setEmoji('🏆')
             );
-            
+             
             const embed = new EmbedBuilder()
                 .setTitle('🎉 STEAL DAWN DROP!')
-                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan ödülün sahibi olur!*\n⚠️ **Not:** Bu drop ödülünü sadece durumunda \`.gg/stealdawn\` taşıyanlar kapabilir!`)
+                .setDescription(`**Ödül:** \`${gorunenOdul}\`\n\n*Aşağıdaki butona ilk basan kazanır!*\n⚠️ Durumunda \`.gg/stealdawn\` olmalıdır!`)
                 .setColor('#f1c40f')
                 .setTimestamp();
-            
+             
             await interaction.reply({ embeds: [embed], components: [row] });
-            return;
         }
 
         if (interaction.commandName === 'ticketpanel') {
             const row = new ActionRowBuilder().addComponents(
                 new StringSelectMenuBuilder()
                     .setCustomId('ticket_secim')
-                    .setPlaceholder('Destek kategorisi seçiniz')
+                    .setPlaceholder('Seçim yap')
                     .addOptions([
                         { label: 'Çekiliş Kazandım', value: 'cekilis_kazandim', emoji: '🔮' },
                         { label: 'Drop Kazandım', value: 'drop_kazandim', emoji: '🎁' },
@@ -510,9 +466,8 @@ client.on('interactionCreate', async interaction => {
                         { label: 'Diğer', value: 'diger', emoji: '❓' }
                     ])
             );
-            const embed = new EmbedBuilder().setTitle('⚡ Steal Dawn Destek Merkezi').setDescription('İşleminize uygun bir kategori seçerek destek talebi (ticket) oluşturabilirsiniz.').setColor('#f1c40f');
+            const embed = new EmbedBuilder().setTitle('⚡ Destek Merkezi').setDescription('Kategori seçerek ticket açın.').setColor('#f1c40f');
             await interaction.reply({ embeds: [embed], components: [row] });
-            return;
         }
 
         if (interaction.commandName === 'vouch') {
@@ -521,36 +476,29 @@ client.on('interactionCreate', async interaction => {
             const odul = interaction.options.getString('odul');
             const yildiz = interaction.options.getInteger('yildiz');
             const not_ = interaction.options.getString('not');
-            
+             
             db.add(`vouch_${yetkili.id}`, 1);
             const toplam = db.get(`vouch_${yetkili.id}`);
             
             const embed = new EmbedBuilder()
-                .setTitle('⚡ Yeni Vouch Kaydı')
+                .setTitle('⚡ Yeni Vouch')
                 .addFields(
-                    { name: '🎁 Ödül', value: odul, inline: true }, 
-                    { name: '👤 Alan Kişi', value: `${alanUye}`, inline: true }, 
-                    { name: '⭐ Değerlendirme', value: '⭐'.repeat(yildiz), inline: true },
-                    { name: '📊 Yetkili Toplam Vouch', value: `\`${toplam}\``, inline: true },
-                    { name: '📝 Not', value: not_, inline: false }
+                    { name: 'Ödül', value: odul, inline: true }, 
+                    { name: 'Alan', value: `${alanUye}`, inline: true }, 
+                    { name: 'Yıldız', value: '⭐'.repeat(yildiz), inline: true },
+                    { name: 'Toplam', value: `\`${toplam}\``, inline: true },
+                    { name: 'Not', value: not_, inline: false }
                 )
-                .setColor('#f1c40f')
-                .setTimestamp();
+                .setColor('#f1c40f');
             await interaction.reply({ embeds: [embed] });
-            return;
         }
 
         if (interaction.commandName === 'yetkilipuan') {
             const hedef = interaction.options.getUser('kullanici') || interaction.user;
             const v = db.get(`vouch_${hedef.id}`) || 0;
             const l = db.get(`legit_${hedef.id}`) || 0;
-            const embed = new EmbedBuilder()
-                .setTitle(`📊 Yetkili Puan Durumu: ${hedef.username}`)
-                .addFields({ name: 'Toplam Vouch', value: `\`${v}\``, inline: true }, { name: 'Toplam Legit', value: `\`${l}\``, inline: true })
-                .setColor('#f1c40f')
-                .setTimestamp();
+            const embed = new EmbedBuilder().setTitle(`📊 ${hedef.username}`).addFields({ name: 'Vouch', value: `\`${v}\``, inline: true }, { name: 'Legit', value: `\`${l}\``, inline: true }).setColor('#f1c40f');
             await interaction.reply({ embeds: [embed] });
-            return;
         }
 
         if (interaction.commandName === 'cekilis') {
@@ -558,26 +506,24 @@ client.on('interactionCreate', async interaction => {
             const durInput = interaction.options.getString('sure');
             const count = interaction.options.getInteger('kazanan_sayisi');
             const prize = interaction.options.getString('odul');
-            
+             
             const msDur = parseTurkceSureToMs(durInput);
             if (!msDur || isNaN(msDur)) {
-                return interaction.editReply({ content: '❌ Geçersiz süre formatı! (Örnek kullanım: 10sn, 15dk, 2saat)' });
+                return interaction.editReply({ content: '❌ Geçersiz süre! (Örn: 10sn, 15dk)' });
             }
-            
+             
             const simdi = Math.floor(Date.now() / 1000);
             const bitis = simdi + Math.floor(msDur / 1000);
             const bitisMs = Date.now() + msDur;
-            
+             
             const embed = new EmbedBuilder()
                 .setTitle('🎉 STEAL DAWN ÇEKİLİŞ 🎉')
-                .setDescription(`**Ödül:** \`${prize}\`\n**Kazanan Sayısı:** \`${count}\`\n\n📅 **Başlangıç:** <t:${simdi}:F>\n⏳ **Bitiş:** <t:${bitis}:R> (<t:${bitis}:F>)`)
-                .setColor('#f1c40f')
-                .setFooter({ text: `Steal Dawn • Başlatan: @${interaction.user.username}` })
-                .setTimestamp();
-            
+                .setDescription(`**Ödül:** \`${prize}\`\n**Kazanan:** \`${count}\`\n\n⏳ **Bitiş:** <t:${bitis}:R>`)
+                .setColor('#f1c40f');
+             
             const mesaj = await interaction.editReply({ embeds: [embed] });
             await mesaj.react('🎉');
-            
+             
             db.set(`cekilis_${mesaj.id}`, {
                 channelId: interaction.channel.id,
                 prize,
@@ -588,7 +534,6 @@ client.on('interactionCreate', async interaction => {
                 baslatanId: interaction.user.id,
                 baslatanTag: `@${interaction.user.username}`
             });
-            return;
         }
 
         if (['ban', 'unban', 'mute', 'unmute'].includes(interaction.commandName)) {
@@ -596,38 +541,31 @@ client.on('interactionCreate', async interaction => {
             if (interaction.commandName === 'ban') {
                 const m = interaction.options.getMember('kisi');
                 await m.ban();
-                await interaction.editReply('✅ Kullanıcı başarıyla banlandı.');
+                await interaction.editReply('✅ Banlandı.');
             }
             if (interaction.commandName === 'unban') {
                 await interaction.guild.members.unban(interaction.options.getString('kisi_id'));
-                await interaction.editReply('✅ Kullanıcının banı kaldırıldı.');
+                await interaction.editReply('✅ Ban açıldı.');
             }
             if (interaction.commandName === 'mute') {
                 const m = interaction.options.getMember('kisi');
                 const msDur = parseTurkceSureToMs(interaction.options.getString('sure'));
-                await m.timeout(msDur, 'Steal Dawn Mute Sistemi');
-                await interaction.editReply('✅ Kullanıcı başarıyla susturuldu.');
+                await m.timeout(msDur, 'Mute');
+                await interaction.editReply('✅ Susturuldu.');
             }
             if (interaction.commandName === 'unmute') {
                 const m = interaction.options.getMember('kisi');
                 await m.timeout(null);
-                await interaction.editReply('✅ Kullanıcının susturması kaldırıldı.');
+                await interaction.editReply('✅ Susturma kaldırıldı.');
             }
-            return;
         }
 
         if (interaction.commandName === 'legit') {
             const alan = interaction.options.getUser('alan');
             db.add(`legit_${alan.id}`, 1);
             const toplam = db.get(`legit_${alan.id}`);
-            const embed = new EmbedBuilder()
-                .setTitle('✅ STEAL DAWN LEGIT ONAYI')
-                .addFields({ name: '👤 Alan Kişi', value: `${alan}`, inline: true }, { name: '📊 Toplam Legit', value: `\`${toplam}\``, inline: true })
-                .setImage(interaction.options.getAttachment('image').url)
-                .setColor('#f1c40f')
-                .setTimestamp();
+            const embed = new EmbedBuilder().setTitle('✅ Legit').addFields({ name: 'Alan', value: `${alan}`, inline: true }, { name: 'Toplam', value: `${toplam}`, inline: true }).setImage(interaction.options.getAttachment('image').url).setColor('#f1c40f');
             await interaction.reply({ embeds: [embed] });
-            return;
         }
 
         if (interaction.commandName === 'anket') {
@@ -649,9 +587,8 @@ client.on('interactionCreate', async interaction => {
                 row.addComponents(new ButtonBuilder().setCustomId(`anket_oy_${anketId}_${s.id}`).setLabel(s.metin.substring(0, 15)).setStyle(ButtonStyle.Secondary).setEmoji(s.emoji));
             });
 
-            const embed = new EmbedBuilder().setTitle('📊 Steal Dawn Anket').setDescription(aciklama).setColor('#f1c40f').setTimestamp();
+            const embed = new EmbedBuilder().setTitle('📊 Anket').setDescription(aciklama).setColor('#f1c40f');
             await interaction.reply({ embeds: [embed], components: [row] });
-            return;
         }
     }
 });
